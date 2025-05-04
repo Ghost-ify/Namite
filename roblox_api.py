@@ -134,102 +134,12 @@ USING_AUTH = bool(ROBLOX_COOKIE)
 # User agent for authenticated requests
 AUTH_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
-# Track authentication status
-AUTHENTICATED = False
-ROBLOX_USER_ID = None
-ROBLOX_USERNAME = None
+# Set authentication status directly if cookie is provided
+AUTHENTICATED = USING_AUTH
 
-async def verify_cookie():
-    """Verify the Roblox cookie and get the authenticated user's information."""
-    global AUTHENTICATED, ROBLOX_USER_ID, ROBLOX_USERNAME
-    
-    if not USING_AUTH:
-        logger.info("No Roblox cookie provided, using anonymous requests")
-        return False
-    
-    try:
-        # Make an async request to verify the cookie
-        loop = asyncio.get_running_loop()
-        
-        # Define the function to run in the executor
-        def check_auth():
-            try:
-                # First, make a request to authenticate
-                headers = {
-                    "Cookie": f".ROBLOSECURITY={ROBLOX_COOKIE}",
-                    "User-Agent": AUTH_USER_AGENT,
-                    "Referer": "https://www.roblox.com/",
-                    "Origin": "https://www.roblox.com"
-                }
-                
-                # Make request to get CSRF token (needed for some endpoints)
-                csrf_conn = http.client.HTTPSConnection("auth.roblox.com", timeout=10)
-                csrf_conn.request("POST", "/v2/logout", headers=headers)
-                csrf_response = csrf_conn.getresponse()
-                
-                # Get the x-csrf-token from headers
-                csrf_token = None
-                if 'x-csrf-token' in csrf_response.headers:
-                    csrf_token = csrf_response.headers['x-csrf-token']
-                    logger.info(f"Got CSRF token: {csrf_token[:5]}...")
-                else:
-                    logger.warning("Could not get CSRF token")
-                
-                # Use fresh connection for user info
-                conn = http.client.HTTPSConnection("users.roblox.com", timeout=10)
-                
-                # Add CSRF token if available
-                if csrf_token:
-                    headers["X-CSRF-TOKEN"] = csrf_token
-                
-                conn.request("GET", "/v1/users/authenticated", headers=headers)
-                response = conn.getresponse()
-                
-                if response.status == 200:
-                    data_bytes = response.read()
-                    data = json.loads(data_bytes.decode('utf-8'))
-                    user_id = data.get('id')
-                    
-                    if user_id:
-                        # Get username with second request
-                        user_conn = http.client.HTTPSConnection("users.roblox.com", timeout=10)
-                        user_conn.request("GET", f"/v1/users/{user_id}", headers=headers)
-                        user_response = user_conn.getresponse()
-                        
-                        if user_response.status == 200:
-                            user_data_bytes = user_response.read()
-                            user_data = json.loads(user_data_bytes.decode('utf-8'))
-                            username = user_data.get('name')
-                            
-                            return True, user_id, username
-                
-                # If we reach here, authentication failed
-                return False, None, None
-            except Exception as e:
-                logger.error(f"Error in auth request: {str(e)}")
-                return False, None, None
-        
-        # Run the auth check in the executor
-        auth_result, user_id, username = await loop.run_in_executor(None, check_auth)
-        
-        if auth_result and user_id and username:
-            AUTHENTICATED = True
-            ROBLOX_USER_ID = user_id
-            ROBLOX_USERNAME = username
-            logger.info(f"Successfully authenticated as Roblox user: {ROBLOX_USERNAME} (ID: {ROBLOX_USER_ID})")
-            return True
-        else:
-            logger.warning("Failed to authenticate with provided Roblox cookie")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error verifying Roblox cookie: {str(e)}")
-        return False
-
-# Initialize authentication
 if USING_AUTH:
-    logger.info("Roblox cookie provided, attempting to authenticate")
-    # We'll call verify_cookie() from main.py when starting up
+    logger.info("Roblox cookie provided, will use for API requests")
+    logger.info("Cookie loaded successfully, length: " + str(len(ROBLOX_COOKIE)))
 else:
     logger.info("Using anonymous Roblox API requests (no cookie provided)")
 
