@@ -50,6 +50,39 @@ class RobloxUsernameBot:
         logger.info(f"Bot logged in as {self.client.user}")
         self.stats['start_time'] = datetime.now()
         
+        # List all guilds (servers) and channels the bot can see
+        logger.info("Listing all available guilds and channels:")
+        if not self.client.guilds:
+            logger.warning("Bot is not a member of any guilds (Discord servers)!")
+            logger.warning("Please make sure you've invited the bot to your server.")
+            logger.warning("See BOT_SETUP_GUIDE.md for instructions on how to invite your bot.")
+        
+        for guild in self.client.guilds:
+            logger.info(f"Guild: {guild.name} (ID: {guild.id})")
+            if not guild.text_channels:
+                logger.warning(f"No text channels found in guild {guild.name}")
+            
+            for channel in guild.text_channels:
+                logger.info(f"  - Channel: {channel.name} (ID: {channel.id})")
+                
+        # Try to fetch the channel directly from Discord (alternative method)
+        try:
+            direct_channel = self.client.get_channel(self.channel_id)
+            if direct_channel:
+                logger.info(f"Successfully found channel via get_channel: {direct_channel.name}")
+            else:
+                logger.warning(f"get_channel returned None for ID: {self.channel_id}")
+                
+                # Try a different method - fetch all channels
+                all_channels = [channel for guild in self.client.guilds for channel in guild.text_channels]
+                logger.info(f"Total channels accessible: {len(all_channels)}")
+                
+                # Log some channels for reference
+                for i, channel in enumerate(all_channels[:5]):  # Log up to 5 channels
+                    logger.info(f"Available channel #{i+1}: {channel.name} (ID: {channel.id})")
+        except Exception as e:
+            logger.error(f"Error while attempting to diagnose channel access: {str(e)}")
+        
         # Start the username checking task if it's not already running
         if not self.task_running:
             self.task_running = True

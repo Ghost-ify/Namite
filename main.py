@@ -1,7 +1,11 @@
 """
 Main entry point for the Roblox Username Discord Bot.
 This file initializes and runs the Discord bot.
+
+It also provides a Flask web application to monitor the bot's status.
 """
+# Import Flask app for web interface
+from flask_app import app
 import os
 import logging
 from dotenv import load_dotenv
@@ -21,6 +25,10 @@ logger = logging.getLogger('roblox_username_bot')
 load_dotenv()
 discord_token = os.getenv('DISCORD_TOKEN')
 channel_id = os.getenv('CHANNEL_ID')
+
+# Log environment variables (without revealing token)
+logger.info(f"Discord token loaded: {'Yes' if discord_token else 'No'}")
+logger.info(f"Channel ID configured: {channel_id}")
 
 if not discord_token:
     logger.error("DISCORD_TOKEN environment variable not set")
