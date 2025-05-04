@@ -468,45 +468,62 @@ class RobloxUsernameBot:
                         self.stats['available_found'] += 1
                         logger.info(f"Available username found: {username}")
                         
-                        # Create an embed message for the available username
-                        embed = discord.Embed(
-                            title="✨ Available Roblox Username Found! ✨",
-                            description=f"**{username}**",
-                            color=0x00ff00  # Green color
-                        )
-                        
-                        # Add username properties
+                        # Username properties
                         username_length = len(username)
                         is_valuable = username_length <= 4
                         
-                        embed.add_field(name="📏 Length", value=str(username_length), inline=True)
-                        embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
-                        embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
-                        
-                        # Add timestamp and additional information
-                        embed.add_field(
-                            name="🔍 How to Claim",
-                            value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
-                            inline=False
-                        )
-                        
-                        # Add statistics
-                        success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
-                        embed.add_field(
-                            name="📊 Statistics",
-                            value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
-                            inline=False
-                        )
-                        
-                        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
-                        
-                        # Determine if we should ping for this username
-                        # Ping for 3-4 character usernames as they're more valuable
+                        # If it's a valuable username (3-4 chars), send immediately with ping
                         if is_valuable:
+                            # Create embed for valuable username
+                            embed = discord.Embed(
+                                title="💎 Valuable Username Found! 💎",
+                                description=f"**{username}**",
+                                color=0xffd700  # Gold color
+                            )
+                            
+                            embed.add_field(name="📏 Length", value=str(username_length), inline=True)
+                            embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                            embed.add_field(name="💎 Valuable", value="Yes", inline=True)
+                            
+                            # Add timestamp and claim information
+                            embed.add_field(
+                                name="🔍 How to Claim",
+                                value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
+                                inline=False
+                            )
+                            
+                            # Add statistics
+                            success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
+                            embed.add_field(
+                                name="📊 Statistics",
+                                value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+                                inline=False
+                            )
+                            
+                            embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+                            
+                            # Send immediately with ping
                             ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
                             await channel.send(content=ping_message, embed=embed)
                         else:
-                            await channel.send(embed=embed)
+                            # For regular usernames, add to the batch queue
+                            self.pending_usernames.append({
+                                'username': username,
+                                'length': username_length,
+                                'has_underscore': '_' in username,
+                                'timestamp': datetime.now()
+                            })
+                            
+                            # If we've reached our batch size or this is the first username, schedule sending
+                            if len(self.pending_usernames) >= self.batch_size:
+                                # Send immediately
+                                await self.send_batch_usernames(channel)
+                            elif len(self.pending_usernames) == 1:
+                                # Schedule a send in 2 minutes if more usernames don't fill the batch first
+                                if self.batch_timer is not None:
+                                    self.batch_timer.cancel()
+                                
+                                self.batch_timer = asyncio.create_task(self.schedule_batch_send(channel, 120))
                     else:
                         logger.debug(f"Username '{username}' not available. Reason: {message}")
                 else:
@@ -575,6 +592,81 @@ class RobloxUsernameBot:
                 # Wait a bit and continue
                 await asyncio.sleep(2)
 
+    async def schedule_batch_send(self, channel, delay_seconds):
+        """Schedule a batch send after a delay if batch size is not reached."""
+        await asyncio.sleep(delay_seconds)
+        if self.pending_usernames and len(self.pending_usernames) > 0:
+            await self.send_batch_usernames(channel)
+
+    async def send_batch_usernames(self, channel):
+        """Send a batch of available usernames in a single message."""
+        if not self.pending_usernames:
+            return
+            
+        # Create a batch embed
+        current_time = datetime.now()
+        usernames_count = len(self.pending_usernames)
+        
+        # Create the embed
+        embed = discord.Embed(
+            title=f"✨ Batch of {usernames_count} Available Usernames Found! ✨",
+            description="The following Roblox usernames are currently available for registration:",
+            color=0x00ff00  # Green
+        )
+        
+        # Sort usernames by length (shorter first as they're more valuable)
+        sorted_usernames = sorted(self.pending_usernames, key=lambda x: x['length'])
+        
+        # List all usernames with their properties
+        username_list = ""
+        for i, username_data in enumerate(sorted_usernames):
+            username = username_data['username']
+            length = username_data['length']
+            has_underscore = username_data['has_underscore']
+            
+            # Add formatting
+            special_marker = "🔹" if has_underscore else "🔸"
+            username_list += f"{special_marker} **{username}** (Length: {length}{', Has underscore' if has_underscore else ''})\n"
+            
+            # Break into multiple fields if list is too long
+            if (i + 1) % 10 == 0 or i == len(sorted_usernames) - 1:
+                embed.add_field(
+                    name=f"Available Usernames {i-9 if i >= 9 else 0}-{i+1}",
+                    value=username_list,
+                    inline=False
+                )
+                username_list = ""
+        
+        # Add claim instructions
+        embed.add_field(
+            name="🔍 How to Claim",
+            value="Go to https://www.roblox.com/signup and enter any of these usernames before someone else claims them!",
+            inline=False
+        )
+        
+        # Add statistics
+        success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
+        embed.add_field(
+            name="📊 Statistics",
+            value=f"Total Available Found: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+            inline=False
+        )
+        
+        # Set footer with timestamp
+        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')} • Batch generated at {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Send the batch message
+        logger.info(f"Sending batch of {usernames_count} available usernames")
+        await channel.send(embed=embed)
+        
+        # Clear the pending usernames list
+        self.pending_usernames = []
+        
+        # Cancel any scheduled batch send
+        if self.batch_timer is not None:
+            self.batch_timer.cancel()
+            self.batch_timer = None
+    
     def run(self):
         """Run the Discord bot."""
         self.client.run(self.token)

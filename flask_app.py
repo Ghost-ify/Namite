@@ -425,6 +425,11 @@ def dashboard():
     for username in recent_usernames:
         username['checked_at'] = username['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
     
+    # Get generator settings
+    min_length = os.environ.get('MIN_LENGTH', '3') 
+    max_length = os.environ.get('MAX_LENGTH', '6')
+    batch_size = os.environ.get('BATCH_SIZE', '5')
+    
     # Current time for display
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
@@ -434,7 +439,10 @@ def dashboard():
         check_interval=check_interval,
         stats=stats,
         recent_usernames=recent_usernames,
-        current_time=current_time
+        current_time=current_time,
+        min_length=min_length,
+        max_length=max_length,
+        batch_size=batch_size
     )
 
 @app.route('/health')
