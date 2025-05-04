@@ -10,6 +10,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from bot import RobloxUsernameBot
+from database import init_database
 
 # Configure logging
 logging.basicConfig(
@@ -53,6 +54,9 @@ try:
 except ValueError:
     logger.warning("Invalid CHECK_INTERVAL value, defaulting to 5 seconds")
     check_interval = 5
+
+# Initialize the database tables
+init_database()
 
 if __name__ == "__main__":
     logger.info("Starting Roblox Username Discord Bot")

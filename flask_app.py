@@ -8,10 +8,13 @@ import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template_string, jsonify
 from dotenv import load_dotenv
-from database import get_recently_available_usernames, get_db_connection
+from database import get_recently_available_usernames, get_db_connection, init_database
 
 # Load environment variables
 load_dotenv()
+
+# Initialize database when Flask app starts
+init_database()
 
 # Create and configure the Flask app
 app = Flask(__name__)
@@ -20,27 +23,38 @@ app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET', 'dev-key-for-testing
 def get_bot_statistics():
     """Get statistics about the bot's operations from the database."""
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
+        conn = get_db_connection()
+        if not conn:
+            return {
+                "total_checked": 0,
+                "available_found": 0,
+                "checks_last_24h": 0,
+                "available_last_24h": 0,
+                "success_rate": 0,
+                "success_rate_24h": 0
+            }
             
+        cursor = conn.cursor()
+        
+        try:
             # Get total checked
-            cursor.execute("SELECT COUNT(*) FROM username_checks")
+            cursor.execute("SELECT COUNT(*) FROM checked_usernames")
             total_checked = cursor.fetchone()[0] or 0
             
             # Get available found
-            cursor.execute("SELECT COUNT(*) FROM username_checks WHERE is_available = TRUE")
+            cursor.execute("SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE")
             available_found = cursor.fetchone()[0] or 0
             
             # Get checks in last 24 hours
             cursor.execute(
-                "SELECT COUNT(*) FROM username_checks WHERE checked_at >= %s",
+                "SELECT COUNT(*) FROM checked_usernames WHERE checked_at >= %s",
                 (datetime.now() - timedelta(days=1),)
             )
             checks_last_24h = cursor.fetchone()[0] or 0
             
             # Get available in last 24 hours
             cursor.execute(
-                "SELECT COUNT(*) FROM username_checks WHERE is_available = TRUE AND checked_at >= %s",
+                "SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE AND checked_at >= %s",
                 (datetime.now() - timedelta(days=1),)
             )
             available_last_24h = cursor.fetchone()[0] or 0
@@ -57,6 +71,8 @@ def get_bot_statistics():
                 "success_rate": success_rate,
                 "success_rate_24h": success_rate_24h
             }
+        finally:
+            conn.close()
     except Exception as e:
         app.logger.error(f"Error getting statistics: {str(e)}")
         return {

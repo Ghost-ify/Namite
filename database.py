@@ -9,6 +9,43 @@ from typing import Tuple, Optional, Dict, List
 
 logger = logging.getLogger('roblox_username_bot')
 
+# SQL for creating the database tables if they don't exist
+INIT_DATABASE_SQL = """
+-- Table for tracking username checks
+CREATE TABLE IF NOT EXISTS checked_usernames (
+    username VARCHAR(20) PRIMARY KEY,
+    checked_at TIMESTAMP NOT NULL,
+    is_available BOOLEAN NOT NULL,
+    status_code INTEGER NOT NULL,
+    message TEXT NOT NULL
+);
+
+-- Index for quick retrieval of recently available usernames
+CREATE INDEX IF NOT EXISTS idx_available_checked_at 
+ON checked_usernames (is_available, checked_at DESC);
+
+-- Index for checking cooldown period
+CREATE INDEX IF NOT EXISTS idx_username_checked_at 
+ON checked_usernames (username, checked_at);
+"""
+
+def init_database():
+    """Initialize the database with required tables."""
+    conn = None
+    try:
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
+        with conn.cursor() as cur:
+            cur.execute(INIT_DATABASE_SQL)
+            conn.commit()
+        logger.info("Database initialized successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Database initialization error: {str(e)}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
 def get_db_connection():
     """Get a connection to the PostgreSQL database."""
     try:
