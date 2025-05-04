@@ -14,18 +14,18 @@ logger = logging.getLogger('roblox_username_bot')
 # Roblox API endpoints for username validation (with fallback)
 API_ENDPOINTS = [
     {
-        "url": "https://users.roblox.com/v1/usernames/validate",
-        "params": {"username": "", "type": "Username"},
-        "name": "Roblox API",
+        "url": "https://auth.roblox.com/v1/usernames/validate",
+        "params": {"request.username": ""},
+        "name": "Roblox Auth API",
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
         "success_streak": 0  # Count of consecutive successful requests
     },
     {
-        "url": "https://users.roproxy.com/v1/usernames/validate",
-        "params": {"username": "", "type": "Username"},
-        "name": "RoProxy API",
+        "url": "https://auth.roproxy.com/v1/usernames/validate",
+        "params": {"request.username": ""},
+        "name": "RoProxy Auth API",
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
@@ -146,7 +146,10 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     
     # Set up the parameters for this API
     request_params = endpoint["params"].copy()
-    request_params["username"] = username
+    if "request.username" in endpoint["params"]:
+        request_params["request.username"] = username
+    else:
+        request_params["username"] = username
     
     # No retries - we'll switch APIs if there's an issue
     try:
@@ -261,7 +264,10 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
     
     # Set up the parameters
     request_params = endpoint["params"].copy()
-    request_params["username"] = username
+    if "request.username" in endpoint["params"]:
+        request_params["request.username"] = username
+    else:
+        request_params["username"] = username
     
     try:
         session = await get_session()
