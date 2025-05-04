@@ -61,10 +61,25 @@ init_database()
 if __name__ == "__main__":
     logger.info("Starting Roblox Username Discord Bot")
     
-    # Check if ROBLOX_COOKIE is set
-    roblox_cookie = os.environ.get("ROBLOX_COOKIE", "")
-    if roblox_cookie:
-        logger.info(f"Roblox cookie is set (length: {len(roblox_cookie)}) and will be used for API requests")
+    # Check if ROBLOX_COOKIE or ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc. are set
+    roblox_cookies = []
+    main_cookie = os.environ.get("ROBLOX_COOKIE", "")
+    if main_cookie:
+        roblox_cookies.append(main_cookie)
+    
+    # Check for numbered cookies
+    cookie_index = 1
+    while True:
+        cookie = os.environ.get(f"ROBLOX_COOKIE{cookie_index}", "")
+        if not cookie:
+            break
+        roblox_cookies.append(cookie)
+        cookie_index += 1
+    
+    if roblox_cookies:
+        logger.info(f"Found {len(roblox_cookies)} Roblox cookies, will be used for API requests")
+        for i, cookie in enumerate(roblox_cookies):
+            logger.info(f"Cookie {i+1} loaded successfully (length: {len(cookie)})")
     
     bot = RobloxUsernameBot(
         token=discord_token,

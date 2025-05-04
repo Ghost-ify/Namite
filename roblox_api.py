@@ -136,22 +136,49 @@ SOURCE_PORTS = [20123, 30123, 40123, 50123, 60123]
 import http.client
 import ssl
 
-# Get the Roblox cookie from environment variables
-ROBLOX_COOKIE = os.environ.get("ROBLOX_COOKIE", "")
+# Get all Roblox cookies from environment variables
+ROBLOX_COOKIES = []
+
+# First check the main cookie
+main_cookie = os.environ.get("ROBLOX_COOKIE", "")
+if main_cookie:
+    ROBLOX_COOKIES.append(main_cookie)
+
+# Then check for numbered cookies (ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc.)
+index = 1
+while True:
+    cookie = os.environ.get(f"ROBLOX_COOKIE{index}", "")
+    if not cookie:
+        break
+    ROBLOX_COOKIES.append(cookie)
+    index += 1
+
 # Flag to track if we're using authenticated requests
-USING_AUTH = bool(ROBLOX_COOKIE)
+USING_AUTH = len(ROBLOX_COOKIES) > 0
+
+# Current cookie index to use (for rotation)
+current_cookie_index = 0
 
 # User agent for authenticated requests
 AUTH_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
-# Set authentication status directly if cookie is provided
+# Set authentication status directly if cookies are provided
 AUTHENTICATED = USING_AUTH
 
 if USING_AUTH:
-    logger.info("Roblox cookie provided, will use for API requests")
-    logger.info("Cookie loaded successfully, length: " + str(len(ROBLOX_COOKIE)))
+    logger.info(f"Found {len(ROBLOX_COOKIES)} Roblox cookies, will use for API requests")
 else:
-    logger.info("Using anonymous Roblox API requests (no cookie provided)")
+    logger.info("Using anonymous Roblox API requests (no cookies provided)")
+    
+# Function to get the next cookie in the rotation
+def get_next_cookie():
+    global current_cookie_index
+    if not ROBLOX_COOKIES:
+        return ""
+    
+    cookie = ROBLOX_COOKIES[current_cookie_index]
+    current_cookie_index = (current_cookie_index + 1) % len(ROBLOX_COOKIES)
+    return cookie
 
 async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple[int, str]:
     """
@@ -188,7 +215,9 @@ async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple
     
     # Add the Roblox cookie if available (for authenticated requests)
     if USING_AUTH and host.endswith("roblox.com"):
-        headers["Cookie"] = f".ROBLOSECURITY={ROBLOX_COOKIE}"
+        # Get the next cookie in rotation
+        current_cookie = get_next_cookie()
+        headers["Cookie"] = f".ROBLOSECURITY={current_cookie}"
         
         # Add common headers used by Roblox site
         headers["Origin"] = "https://www.roblox.com"
