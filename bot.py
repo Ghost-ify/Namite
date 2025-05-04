@@ -167,7 +167,7 @@ class RobloxUsernameBot:
         """Handle the !roblox check command to check a specific username."""
         # Validate the username format
         if not validate_username(username):
-            await channel.send(f"⚠️ Invalid username format: `{username}`. Usernames must be 3-6 characters, can only contain letters, numbers, and one underscore (not at start/end), and cannot be all numbers.")
+            await channel.send(f"⚠️ Invalid username format: `{username}`. Usernames must be 3-20 characters, can only contain letters, numbers, and one underscore (not at start/end), and cannot be all numbers.")
             return
             
         # Send a "checking" message
@@ -244,7 +244,7 @@ class RobloxUsernameBot:
         embed.add_field(
             name="Username Rules",
             value=(
-                "- Length: 3-6 characters\n"
+                "- Length: 3-20 characters\n"
                 "- Allowed: letters, numbers, one underscore\n"
                 "- No underscore at start/end\n"
                 "- Cannot be all numbers"

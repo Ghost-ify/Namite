@@ -3,7 +3,7 @@ Roblox username generator module.
 This file contains functions to generate random usernames following Roblox rules.
 
 The generator creates usernames following these rules:
-- Length: 3-6 characters
+- Length: 3-20 characters
 - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
 - Cannot be fully numeric
 - Cannot start or end with an underscore
@@ -64,7 +64,7 @@ def generate_word_like(length: int) -> str:
 def generate_username() -> str:
     """
     Generate a random Roblox-style username following these rules:
-    - Length: 3-6 characters
+    - Length: 3-20 characters
     - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
     - Cannot be fully numeric
     - Cannot start or end with an underscore
@@ -79,8 +79,8 @@ def generate_username() -> str:
         pattern_func = random.choice(PATTERNS)
         username = pattern_func()
         
-        # Ensure 3-6 character length
-        if len(username) < 3 or len(username) > 6:
+        # Ensure 3-20 character length
+        if len(username) < 3 or len(username) > 20:
             continue
             
         # Ensure no underscore at start or end
@@ -133,8 +133,8 @@ def validate_username(username: str) -> bool:
     Returns:
         bool: Whether the username is valid
     """
-    # Check length (3-6 characters)
-    if len(username) < 3 or len(username) > 6:
+    # Check length (3-20 characters)
+    if len(username) < 3 or len(username) > 20:
         return False
         
     # Check allowed characters
