@@ -20,16 +20,18 @@ API_ENDPOINTS = [
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
-        "success_streak": 0  # Count of consecutive successful requests
+        "success_streak": 0,  # Count of consecutive successful requests
+        "enabled": True  # Whether this API is currently enabled
     },
     {
-        "url": "https://auth.roproxy.com/v1/usernames/validate",
-        "params": {"request.username": ""},
-        "name": "RoProxy Auth API",
+        "url": "https://users.roblox.com/v1/usernames/validate",
+        "params": {"username": "", "type": "Username"},
+        "name": "Roblox Users API",
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
-        "success_streak": 0  # Count of consecutive successful requests
+        "success_streak": 0,  # Count of consecutive successful requests
+        "enabled": True  # Whether this API is currently enabled
     }
 ]
 
@@ -82,6 +84,20 @@ def select_next_api():
     # Get the current time
     current_time = time.time()
     
+    # Check if the current API is enabled
+    if not API_ENDPOINTS[current_api_index]["enabled"]:
+        # Find the next enabled API
+        for i in range(len(API_ENDPOINTS)):
+            next_index = (current_api_index + i) % len(API_ENDPOINTS)
+            if API_ENDPOINTS[next_index]["enabled"]:
+                current_api_index = next_index
+                break
+        else:
+            # If no APIs are enabled, enable the first one as a fallback
+            logger.warning("No APIs are enabled! Re-enabling the primary API.")
+            API_ENDPOINTS[0]["enabled"] = True
+            current_api_index = 0
+    
     # Check if we need to enforce a delay for the current endpoint
     current_endpoint = API_ENDPOINTS[current_api_index]
     elapsed = current_time - current_endpoint["last_request"]
@@ -90,23 +106,38 @@ def select_next_api():
     if elapsed >= current_endpoint["delay"]:
         return current_api_index
     
-    # Otherwise, try the alternative endpoint
-    alt_index = (current_api_index + 1) % len(API_ENDPOINTS)
-    alt_endpoint = API_ENDPOINTS[alt_index]
-    elapsed = current_time - alt_endpoint["last_request"]
-    
-    # If the alternative endpoint is available, use it
-    if elapsed >= alt_endpoint["delay"]:
-        current_api_index = alt_index
-        return current_api_index
-    
-    # If neither endpoint is ready yet, use the one that will be ready sooner
-    time_until_current = current_endpoint["delay"] - elapsed
-    time_until_alt = alt_endpoint["delay"] - (current_time - alt_endpoint["last_request"])
-    
-    if time_until_alt < time_until_current:
-        current_api_index = alt_index
+    # Otherwise, try to find an alternative enabled endpoint
+    for i in range(1, len(API_ENDPOINTS)):
+        alt_index = (current_api_index + i) % len(API_ENDPOINTS)
+        alt_endpoint = API_ENDPOINTS[alt_index]
         
+        # Skip disabled endpoints
+        if not alt_endpoint["enabled"]:
+            continue
+            
+        elapsed = current_time - alt_endpoint["last_request"]
+        
+        # If this alternative endpoint is available, use it
+        if elapsed >= alt_endpoint["delay"]:
+            current_api_index = alt_index
+            return current_api_index
+    
+    # If no immediately available endpoint is found, use the one that will be ready soonest
+    best_wait_time = float('inf')
+    best_index = current_api_index
+    
+    for i, endpoint in enumerate(API_ENDPOINTS):
+        if not endpoint["enabled"]:
+            continue
+            
+        elapsed = current_time - endpoint["last_request"]
+        if elapsed < endpoint["delay"]:
+            wait_time = endpoint["delay"] - elapsed
+            if wait_time < best_wait_time:
+                best_wait_time = wait_time
+                best_index = i
+    
+    current_api_index = best_index
     return current_api_index
 
 async def check_username_availability(username: str) -> Tuple[bool, int, str]:
@@ -220,14 +251,42 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
                 return False, response.status, message
                 
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-        # Network error - try the other API
+        # Network error - increment error count and possibly disable endpoint
         endpoint["success_streak"] = 0
+        endpoint["rate_limit_count"] += 1
         err_type = "Timeout" if isinstance(e, asyncio.TimeoutError) else "Network"
         logger.error(f"{err_type} error with {endpoint['name']}: {str(e)}")
         
-        # Try the alternate API
-        alt_index = (api_index + 1) % len(API_ENDPOINTS)
-        return await check_with_specific_api(username, alt_index)
+        # If we've had multiple failures in a row, potentially disable this endpoint
+        if endpoint["rate_limit_count"] >= 5:
+            logger.warning(f"Disabling problematic endpoint: {endpoint['name']} due to repeated failures")
+            endpoint["enabled"] = False
+            
+            # Make sure we have at least one endpoint enabled
+            any_enabled = False
+            for ep in API_ENDPOINTS:
+                if ep["enabled"]:
+                    any_enabled = True
+                    break
+                    
+            if not any_enabled:
+                logger.warning("All endpoints were disabled! Re-enabling primary endpoint.")
+                API_ENDPOINTS[0]["enabled"] = True
+                API_ENDPOINTS[0]["rate_limit_count"] = 0
+        
+        # Try an alternate API
+        alt_index = None
+        for i in range(1, len(API_ENDPOINTS)):
+            check_index = (api_index + i) % len(API_ENDPOINTS)
+            if API_ENDPOINTS[check_index]["enabled"]:
+                alt_index = check_index
+                break
+                
+        if alt_index is not None:
+            return await check_with_specific_api(username, alt_index)
+        else:
+            # Fall back to the primary endpoint if no alternatives
+            return await check_with_specific_api(username, 0)
             
     except Exception as e:
         # Unexpected error
@@ -325,8 +384,37 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
                 memory_cache[username] = (False, response.status, message, current_time)
                 return False, response.status, message
     
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        # Network error with this API
+        endpoint["success_streak"] = 0
+        endpoint["rate_limit_count"] += 1
+        err_type = "Timeout" if isinstance(e, asyncio.TimeoutError) else "Network"
+        logger.error(f"{err_type} error with {endpoint['name']}: {str(e)}")
+        
+        # If we've had multiple failures in a row, potentially disable this endpoint
+        if endpoint["rate_limit_count"] >= 5:
+            logger.warning(f"Disabling problematic endpoint: {endpoint['name']} due to repeated failures")
+            endpoint["enabled"] = False
+            
+            # Make sure we have at least one endpoint enabled
+            any_enabled = False
+            for ep in API_ENDPOINTS:
+                if ep["enabled"]:
+                    any_enabled = True
+                    break
+                    
+            if not any_enabled:
+                logger.warning("All endpoints were disabled! Re-enabling primary endpoint with reset error count.")
+                API_ENDPOINTS[0]["enabled"] = True
+                API_ENDPOINTS[0]["rate_limit_count"] = 0
+        
+        message = f"Connection error with {endpoint['name']}: {str(e)}"
+        record_username_check(username, False, 0, message)
+        memory_cache[username] = (False, 0, message, current_time)
+        return False, 0, message
+        
     except Exception as e:
-        # Critical error with alternate API too
+        # Other unexpected error
         endpoint["success_streak"] = 0
         message = f"Error with {endpoint['name']}: {str(e)}"
         logger.error(message)
