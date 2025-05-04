@@ -10,7 +10,9 @@ This bot automatically finds available Roblox usernames and posts them to your D
 - **User Pinging**: Pings a designated user for 3-4 character valuable usernames
 - **Command System**: Allows members to check specific usernames with the `!roblox check` command
 - **Rich Embeds**: Uses Discord embeds with emoji and formatting for better presentation
+- **Chat Color Prediction**: Shows the predicted Roblox chat color for each username with matching emoji
 - **History & Stats**: Tracks statistics and maintains a list of recently found available usernames
+- **Batch Sending**: Collects regular usernames into batches to reduce channel spam
 
 ## Setup Instructions
 
@@ -24,13 +26,15 @@ For detailed setup and troubleshooting, see [BOT_SETUP_GUIDE.md](BOT_SETUP_GUIDE
 ## Commands
 
 - `!roblox check <username>` - Check if a specific username is available
+- `!roblox length <number>` - Generate and check usernames of a specific length
+- `!roblox length <min>-<max>` - Check usernames in a length range
 - `!roblox stats` - Show bot statistics
 - `!roblox recent` - Show recently found available usernames
 - `!roblox help` - Show help information
 
 ## Roblox Username Rules
 
-- Length: 3-6 characters
+- Length: 3-20 characters (bot default focuses on 3-6 characters)
 - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
 - Cannot be fully numeric
 - Cannot start or end with an underscore
@@ -41,9 +45,19 @@ For detailed setup and troubleshooting, see [BOT_SETUP_GUIDE.md](BOT_SETUP_GUIDE
 The bot uses a PostgreSQL database to track username checks and implements a 3-day cooldown before rechecking the same username.
 
 For better performance, it:
-- Runs up to 3 concurrent username checks in parallel
+- Runs up to 5 concurrent username checks in parallel
 - Uses connection pooling for database operations
 - Implements an in-memory cache for very recent checks
+- Batches available usernames to reduce channel spam
+- Uses exponential backoff for rate limit handling
+
+## Chat Color Prediction
+
+The bot predicts which chat color each username would have in Roblox's chat system. Roblox uses a specific algorithm to determine chat colors that follow this pattern:
+
+🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond
+
+For example, "ROBLOX" has an Orange chat color. If you change one letter to the next in the alphabet, the color shifts by one in the sequence.
 
 ## Notes for Channel Administrators
 

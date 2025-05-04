@@ -408,6 +408,16 @@ class RobloxUsernameBot:
             inline=False
         )
         
+        # Color sequence information
+        embed.add_field(
+            name="🌈 Chat Color Prediction",
+            value=(
+                "Usernames display with their predicted Roblox chat color:\n"
+                "🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond"
+            ),
+            inline=False
+        )
+        
         embed.set_footer(text="Bot automatically checks random usernames in the background")
         
         await channel.send(embed=embed)
@@ -456,9 +466,10 @@ class RobloxUsernameBot:
         for i, username_data in enumerate(recent_usernames):
             username = username_data['username']
             timestamp = username_data['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
+            chat_color = self.get_chat_color(username)
             embed.add_field(
-                name=f"{i+1}. {username}",
-                value=f"Found at: {timestamp}",
+                name=f"{i+1}. {username} {chat_color['emoji']}",
+                value=f"Color: {chat_color['name']} | Found at: {timestamp}",
                 inline=False
             )
         
@@ -590,6 +601,12 @@ class RobloxUsernameBot:
             inline=False
         )
         
+        embed.add_field(
+            name="🌈 Chat Color Prediction",
+            value="• Displays predicted Roblox chat color for each username\n• Colors cycle: 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond",
+            inline=False
+        )
+        
         embed.set_footer(text=f"Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         await channel.send(embed=embed)
@@ -645,9 +662,10 @@ class RobloxUsernameBot:
             length = username_data['length']
             has_underscore = username_data['has_underscore']
             
-            # Add formatting
+            # Add formatting with chat color
+            chat_color = self.get_chat_color(username)
             special_marker = "🔹" if has_underscore else "🔸"
-            username_list += f"{special_marker} **{username}** (Length: {length}{', Has underscore' if has_underscore else ''})\n"
+            username_list += f"{special_marker} **{username}** {chat_color['emoji']} (Length: {length}, Color: {chat_color['name']}{', Has underscore' if has_underscore else ''})\n"
             
             # Break into multiple fields if list is too long
             if (i + 1) % 10 == 0 or i == len(sorted_usernames) - 1:
