@@ -213,6 +213,28 @@ DASHBOARD_HTML = """
                             <p>The bot is continuously checking for available Roblox usernames and posting findings to Discord.</p>
                         </div>
                         
+                        {% if stats.api_status == "Healthy" %}
+                        <div class="alert alert-success mb-3" role="alert">
+                            <h5 class="alert-heading">✅ API Status: Healthy</h5>
+                            <p class="mb-0">The Roblox API connections are working properly.</p>
+                        </div>
+                        {% elif stats.api_status == "Degraded" %}
+                        <div class="alert alert-warning mb-3" role="alert">
+                            <h5 class="alert-heading">⚠️ API Status: Degraded</h5>
+                            <p class="mb-0">The Roblox API is experiencing some issues. Some checks may fail.</p>
+                        </div>
+                        {% elif stats.api_status == "Critical" %}
+                        <div class="alert alert-danger mb-3" role="alert">
+                            <h5 class="alert-heading">🚫 API Status: Critical</h5>
+                            <p class="mb-0">The Roblox API is experiencing significant issues. Most checks are failing.</p>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary mb-3" role="alert">
+                            <h5 class="alert-heading">❓ API Status: {{ stats.api_status }}</h5>
+                            <p class="mb-0">Unable to determine the current API status.</p>
+                        </div>
+                        {% endif %}
+                        
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="text-center p-3 border rounded flex-fill me-2">
                                 <div class="stats-number">{{ stats.total_checked }}</div>
@@ -228,15 +250,21 @@ DASHBOARD_HTML = """
                             </div>
                         </div>
                         
+                        <div class="text-muted small mb-2">* Success rate excludes error responses from calculations.</div>
+                        
                         <h5>24-Hour Activity</h5>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="text-center p-2 border rounded flex-fill me-2">
                                 <div class="stats-number">{{ stats.checks_last_24h }}</div>
                                 <div class="stats-label">Recent Checks</div>
                             </div>
-                            <div class="text-center p-2 border rounded flex-fill">
+                            <div class="text-center p-2 border rounded flex-fill me-2">
                                 <div class="stats-number">{{ stats.available_last_24h }}</div>
                                 <div class="stats-label">Recent Finds</div>
+                            </div>
+                            <div class="text-center p-2 border rounded flex-fill">
+                                <div class="stats-number">{{ stats.errors_last_24h }}</div>
+                                <div class="stats-label">API Errors</div>
                             </div>
                         </div>
                         
@@ -245,6 +273,13 @@ DASHBOARD_HTML = """
                                  aria-valuenow="{{ stats.success_rate_24h }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                         <div class="text-muted small text-end">24h Success Rate: {{ "%.2f"|format(stats.success_rate_24h) }}%</div>
+                        
+                        {% if stats.errors_last_24h > 0 %}
+                        <div class="alert alert-warning mt-3">
+                            <h6 class="alert-heading">⚠️ API Errors Detected</h6>
+                            <p class="mb-0">Some username checks have failed due to API errors ({{ stats.errors_last_24h }} in the last 24 hours). The bot will automatically retry and adapt to changing API conditions.</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -345,6 +380,8 @@ DASHBOARD_HTML = """
                         <p>The bot is fully autonomous and runs in the background. You can use these Discord commands:</p>
                         <div class="bg-dark p-3 rounded mb-3">
                             <code>!roblox check &lt;username&gt;</code> - Check if a specific username is available<br>
+                            <code>!roblox length &lt;number&gt;</code> - Generate and check usernames of specific length<br>
+                            <code>!roblox length &lt;min&gt;-&lt;max&gt;</code> - Check usernames in a length range<br>
                             <code>!roblox stats</code> - Show bot statistics<br>
                             <code>!roblox recent</code> - Show recently found usernames<br>
                             <code>!roblox help</code> - Show help message
