@@ -1,68 +1,52 @@
 # Roblox Username Discord Bot
 
-A Discord bot that automatically finds available Roblox usernames and posts them to your Discord channel.
+This bot automatically finds available Roblox usernames and posts them to your Discord channel. It also allows users to check specific usernames on demand.
 
 ## Features
 
-- **Automatic Username Generation**: Generates random Roblox-style usernames following platform rules
-- **Availability Checking**: Uses Roblox's API to check if usernames are available
-- **Discord Integration**: Posts available usernames to your Discord channel
-- **Continuous Running**: Designed to run indefinitely on Replit
-- **Error Handling**: Handles network issues and API rate limits
+- **Automatic Username Generation**: Generates random Roblox-compliant usernames (3-6 characters)
+- **Availability Checking**: Checks usernames against the Roblox API and reports available ones
+- **Database Tracking**: Remembers checked usernames with a 3-day cooldown to avoid duplicates
+- **User Pinging**: Pings a designated user for 3-4 character valuable usernames
+- **Command System**: Allows members to check specific usernames with the `!roblox check` command
+- **Rich Embeds**: Uses Discord embeds with emoji and formatting for better presentation
+- **History & Stats**: Tracks statistics and maintains a list of recently found available usernames
 
 ## Setup Instructions
 
-### 1. Discord Bot Setup
+1. Create a Discord bot on the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Configure your bot token in the `.env` file
+3. Set the CHANNEL_ID in the `.env` file to your desired Discord channel
+4. Run the bot using `python main.py`
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a "New Application"
-3. Navigate to the "Bot" tab and click "Add Bot"
-4. Under the Token section, click "Copy" or "Reset Token" to get your bot token
-5. Invite the bot to your server by going to OAuth2 > URL Generator:
-   - Select "bot" scope
-   - Select the "Send Messages" and "Embed Links" permissions
-   - Copy and open the generated URL
+For detailed setup and troubleshooting, see [BOT_SETUP_GUIDE.md](BOT_SETUP_GUIDE.md).
 
-### 2. Configuration
+## Commands
 
-1. Create an `.env` file with the following fields:
-```
-DISCORD_TOKEN=your_bot_token_here
-CHANNEL_ID=your_channel_id_here
-CHECK_INTERVAL=60
-```
+- `!roblox check <username>` - Check if a specific username is available
+- `!roblox stats` - Show bot statistics
+- `!roblox recent` - Show recently found available usernames
+- `!roblox help` - Show help information
 
-2. To get your Channel ID:
-   - Enable Developer Mode in Discord (Settings > Advanced)
-   - Right-click on your desired channel and select "Copy ID"
+## Roblox Username Rules
 
-### 3. Running the Bot
+- Length: 3-6 characters
+- Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
+- Cannot be fully numeric
+- Cannot start or end with an underscore
+- Maximum one underscore
 
-1. Make sure all dependencies are installed:
-   - discord.py
-   - python-dotenv
-   - aiohttp
-2. Run the bot with: `python main.py`
+## Technical Information
 
-## Customization
+The bot uses a PostgreSQL database to track username checks and implements a 3-day cooldown before rechecking the same username.
 
-- **Check Interval**: Adjust the `CHECK_INTERVAL` in the `.env` file (minimum 10 seconds to avoid rate limits)
-- **Username Generation**: Modify `username_generator.py` to change username patterns
-- **Embed Appearance**: Edit the embed creation in `bot.py` to customize the appearance of Discord messages
+For better performance, it:
+- Runs up to 3 concurrent username checks in parallel
+- Uses connection pooling for database operations
+- Implements an in-memory cache for very recent checks
 
-## File Structure
+## Notes for Channel Administrators
 
-- `main.py` - Entry point that sets up and runs the bot
-- `bot.py` - Discord bot implementation and main logic
-- `username_generator.py` - Username generation following Roblox rules
-- `roblox_api.py` - API integration with Roblox's username validation endpoint
+To receive pings for valuable 3-4 character usernames, update the user ID in `bot.py` (line 353/200 - look for `<@1017042087469912084>`).
 
-## Troubleshooting
-
-- **Bot Not Starting**: Ensure your Discord token is valid and properly formatted
-- **Cannot Find Channel**: Verify the channel ID is correct and the bot has access to that channel
-- **API Rate Limiting**: If you see rate limit errors, increase the check interval
-
----
-
-Created for educational purposes only. This application is not affiliated with Roblox or Discord.
+For more details on setting up the correct channel ID, see [CHANNEL_ID_INSTRUCTIONS.md](CHANNEL_ID_INSTRUCTIONS.md).

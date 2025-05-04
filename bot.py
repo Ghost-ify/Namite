@@ -30,14 +30,21 @@ class RobloxUsernameBot:
         
         # Initialize Discord client with intents
         intents = discord.Intents.default()
-        # We need message_content intent to read commands
-        intents.message_content = True
+        # Don't require message_content intent for now since we didn't enable it
+        # intents.message_content = True
         self.client = discord.Client(intents=intents)
         
         # Set up event handlers
         self.client.event(self.on_ready)
         self.client.event(self.on_error)
-        self.client.event(self.on_message)
+        
+        # Only set up message handler if needed
+        try:
+            # Try to register the message handler
+            self.client.event(self.on_message)
+            logger.info("Message handler registered successfully")
+        except Exception as e:
+            logger.warning(f"Could not register message handler. Commands will not work: {str(e)}")
         
         # Track statistics
         self.stats = {
@@ -165,17 +172,35 @@ class RobloxUsernameBot:
             is_available, status_code, message = await check_username_availability(username)
             
             if is_available:
+                # Username properties
+                username_length = len(username)
+                is_valuable = username_length <= 4
+                
                 # Create an embed for available username
                 embed = discord.Embed(
                     title="✅ Username is Available!",
                     description=f"**{username}**",
                     color=0x00ff00  # Green
                 )
-                embed.add_field(name="Length", value=str(len(username)), inline=True)
-                embed.add_field(name="Contains Underscore", value=str('_' in username), inline=True)
+                
+                embed.add_field(name="📏 Length", value=str(username_length), inline=True)
+                embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
+                
+                embed.add_field(
+                    name="🔍 How to Claim",
+                    value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
+                    inline=False
+                )
+                
                 embed.set_footer(text="This username is available for registration on Roblox")
                 
-                await checking_message.edit(content=None, embed=embed)
+                # Determine if we should ping for this username
+                if is_valuable:
+                    ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
+                    await checking_message.edit(content=ping_message, embed=embed)
+                else:
+                    await checking_message.edit(content=None, embed=embed)
             else:
                 # Create an embed for unavailable username
                 embed = discord.Embed(
@@ -299,24 +324,43 @@ class RobloxUsernameBot:
                 
                 # Create an embed message for the available username
                 embed = discord.Embed(
-                    title="Available Roblox Username Found!",
+                    title="✨ Available Roblox Username Found! ✨",
                     description=f"**{username}**",
                     color=0x00ff00  # Green color
                 )
                 
-                embed.add_field(name="Length", value=str(len(username)), inline=True)
-                embed.add_field(name="Contains Underscore", value=str('_' in username), inline=True)
-                embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+                # Add username properties
+                username_length = len(username)
+                is_valuable = username_length <= 4
+                
+                embed.add_field(name="📏 Length", value=str(username_length), inline=True)
+                embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
+                
+                # Add timestamp and additional information
+                embed.add_field(
+                    name="🔍 How to Claim",
+                    value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
+                    inline=False
+                )
                 
                 # Add statistics
                 success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
                 embed.add_field(
-                    name="Statistics",
+                    name="📊 Statistics",
                     value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
                     inline=False
                 )
                 
-                await channel.send(embed=embed)
+                embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+                
+                # Determine if we should ping for this username
+                # Ping for 3-4 character usernames as they're more valuable
+                if is_valuable:
+                    ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
+                    await channel.send(content=ping_message, embed=embed)
+                else:
+                    await channel.send(embed=embed)
             else:
                 logger.debug(f"Username '{username}' not available. Reason: {message}")
                 
@@ -339,8 +383,28 @@ class RobloxUsernameBot:
         # Initialize semaphore for parallel requests
         self.semaphore = asyncio.Semaphore(self.parallel_checks)
         
-        # Post initial status message
-        await channel.send(f"🤖 **Roblox Username Bot Started**\nChecking for available usernames in parallel mode (up to {self.parallel_checks} checks at once)")
+        # Post initial status message with embed
+        embed = discord.Embed(
+            title="🤖 Roblox Username Bot Started",
+            description="The bot is now searching for available Roblox usernames.",
+            color=0x3498db  # Blue
+        )
+        
+        embed.add_field(
+            name="🔍 Search Strategy",
+            value=f"• Checking up to {self.parallel_checks} usernames in parallel\n• Following 3-6 character username rules\n• 3-day cooldown for rechecking usernames",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📣 Notifications",
+            value="• Will ping for valuable 3 and 4 character usernames\n• Use `!roblox check <username>` to check specific names",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        await channel.send(embed=embed)
         
         while True:
             try:
