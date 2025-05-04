@@ -6,9 +6,11 @@ import asyncio
 import logging
 import discord
 import random
+import re
 from datetime import datetime
-from username_generator import generate_username
+from username_generator import generate_username, validate_username
 from roblox_api import check_username_availability
+from database import get_username_status, get_recently_available_usernames
 
 logger = logging.getLogger('roblox_username_bot')
 
@@ -26,14 +28,16 @@ class RobloxUsernameBot:
         self.channel_id = channel_id
         self.check_interval = check_interval
         
-        # Initialize Discord client with default intents
-        # No need for message_content privileged intent since we're not reading messages
+        # Initialize Discord client with intents
         intents = discord.Intents.default()
+        # We need message_content intent to read commands
+        intents.message_content = True
         self.client = discord.Client(intents=intents)
         
         # Set up event handlers
         self.client.event(self.on_ready)
         self.client.event(self.on_error)
+        self.client.event(self.on_message)
         
         # Track statistics
         self.stats = {
@@ -97,6 +101,183 @@ class RobloxUsernameBot:
     async def on_error(self, event, *args, **kwargs):
         """Event handler for Discord errors."""
         logger.error(f"Discord error in {event}: {str(args[0])}")
+        
+    async def on_message(self, message):
+        """Handle incoming Discord messages and commands."""
+        # Ignore messages from the bot itself
+        if message.author == self.client.user:
+            return
+            
+        # Command prefix
+        prefix = "!roblox"
+        
+        # Check if the message starts with the command prefix
+        if not message.content.startswith(prefix):
+            return
+            
+        # Parse the command
+        command_parts = message.content[len(prefix):].strip().split()
+        if not command_parts:
+            # Just the prefix with no command
+            await self.send_help_message(message.channel)
+            return
+            
+        command = command_parts[0].lower()
+        
+        # Handle different commands
+        if command == "check":
+            # Check a specific username
+            if len(command_parts) < 2:
+                await message.channel.send("⚠️ Please provide a username to check. Example: `!roblox check username123`")
+                return
+                
+            username = command_parts[1]
+            await self.handle_check_command(message.channel, username)
+            
+        elif command == "help" or command == "?":
+            # Show help message
+            await self.send_help_message(message.channel)
+            
+        elif command == "stats":
+            # Show bot statistics
+            await self.send_stats_message(message.channel)
+            
+        elif command == "recent":
+            # Show recently found available usernames
+            await self.send_recent_available(message.channel)
+            
+        else:
+            # Unknown command
+            await message.channel.send(f"⚠️ Unknown command: `{command}`. Type `!roblox help` for a list of commands.")
+    
+    async def handle_check_command(self, channel, username):
+        """Handle the !roblox check command to check a specific username."""
+        # Validate the username format
+        if not validate_username(username):
+            await channel.send(f"⚠️ Invalid username format: `{username}`. Usernames must be 3-6 characters, can only contain letters, numbers, and one underscore (not at start/end), and cannot be all numbers.")
+            return
+            
+        # Send a "checking" message
+        checking_message = await channel.send(f"🔍 Checking availability of username: `{username}`...")
+        
+        try:
+            # Check the availability
+            is_available, status_code, message = await check_username_availability(username)
+            
+            if is_available:
+                # Create an embed for available username
+                embed = discord.Embed(
+                    title="✅ Username is Available!",
+                    description=f"**{username}**",
+                    color=0x00ff00  # Green
+                )
+                embed.add_field(name="Length", value=str(len(username)), inline=True)
+                embed.add_field(name="Contains Underscore", value=str('_' in username), inline=True)
+                embed.set_footer(text="This username is available for registration on Roblox")
+                
+                await checking_message.edit(content=None, embed=embed)
+            else:
+                # Create an embed for unavailable username
+                embed = discord.Embed(
+                    title="❌ Username is Unavailable",
+                    description=f"**{username}**",
+                    color=0xff0000  # Red
+                )
+                embed.add_field(name="Reason", value=message, inline=False)
+                embed.set_footer(text="This username cannot be registered on Roblox")
+                
+                await checking_message.edit(content=None, embed=embed)
+        except Exception as e:
+            logger.error(f"Error checking username {username}: {str(e)}")
+            await checking_message.edit(content=f"⚠️ Error checking username: `{username}`. Please try again later.")
+    
+    async def send_help_message(self, channel):
+        """Send help information about the bot and its commands."""
+        embed = discord.Embed(
+            title="🤖 Roblox Username Bot - Help",
+            description="This bot helps you find available Roblox usernames.",
+            color=0x3498db  # Blue
+        )
+        
+        embed.add_field(
+            name="Commands",
+            value=(
+                "🔹 `!roblox check <username>` - Check if a specific username is available\n"
+                "🔹 `!roblox stats` - Show bot statistics\n"
+                "🔹 `!roblox recent` - Show recently found available usernames\n"
+                "🔹 `!roblox help` - Show this help message"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Username Rules",
+            value=(
+                "- Length: 3-6 characters\n"
+                "- Allowed: letters, numbers, one underscore\n"
+                "- No underscore at start/end\n"
+                "- Cannot be all numbers"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text="Bot automatically checks random usernames in the background")
+        
+        await channel.send(embed=embed)
+    
+    async def send_stats_message(self, channel):
+        """Send statistics about the bot's operations."""
+        uptime = datetime.now() - self.stats['start_time'] if self.stats['start_time'] else datetime.now()
+        hours, remainder = divmod(int(uptime.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        uptime_str = f"{hours}h {minutes}m {seconds}s"
+        
+        success_rate = 0
+        if self.stats['total_checked'] > 0:
+            success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
+        
+        embed = discord.Embed(
+            title="📊 Roblox Username Bot - Statistics",
+            color=0x9b59b6  # Purple
+        )
+        
+        embed.add_field(name="Uptime", value=uptime_str, inline=True)
+        embed.add_field(name="Total Checked", value=str(self.stats['total_checked']), inline=True)
+        embed.add_field(name="Available Found", value=str(self.stats['available_found']), inline=True)
+        embed.add_field(name="Success Rate", value=f"{success_rate:.2f}%", inline=True)
+        embed.add_field(name="Parallel Checks", value=str(self.parallel_checks), inline=True)
+        embed.add_field(name="Check Interval", value=f"{self.check_interval}s", inline=True)
+        
+        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+        
+        await channel.send(embed=embed)
+    
+    async def send_recent_available(self, channel):
+        """Send a list of recently found available usernames."""
+        recent_usernames = get_recently_available_usernames(10)
+        
+        if not recent_usernames:
+            await channel.send("❓ No available usernames found yet. The bot will keep checking!")
+            return
+            
+        embed = discord.Embed(
+            title="🎯 Recently Found Available Usernames",
+            description="These usernames were recently found to be available:",
+            color=0x2ecc71  # Green
+        )
+        
+        for i, username_data in enumerate(recent_usernames):
+            username = username_data['username']
+            timestamp = username_data['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
+            embed.add_field(
+                name=f"{i+1}. {username}",
+                value=f"Found at: {timestamp}",
+                inline=False
+            )
+        
+        embed.set_footer(text="These usernames may have been claimed since they were found")
+        
+        await channel.send(embed=embed)
 
     async def check_username(self, channel):
         """Check a single username and report if available."""
