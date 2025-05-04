@@ -346,11 +346,13 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     # Make the HTTP request
     try:
         # Try to make the request with exponential backoff
+        logger.info(f"Checking username '{username}' with endpoint: {endpoint['name']}")
         status_code, response_text = await make_http_request(
             endpoint["url"], 
             request_params,
             endpoint["headers_index"]
         )
+        logger.info(f"API response for {username}: status={status_code}, response={response_text[:150]}")
         
         # Handle rate limiting
         if status_code == 429:
@@ -501,11 +503,13 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
     
     try:
         # Make the HTTP request
+        logger.info(f"Checking username '{username}' with fallback endpoint: {endpoint['name']}")
         status_code, response_text = await make_http_request(
             endpoint["url"],
             request_params,
             endpoint["headers_index"]
         )
+        logger.info(f"Fallback API response for {username}: status={status_code}, response={response_text[:150]}")
         
         # Record response status
         if status_code == 429:
@@ -541,10 +545,12 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
             if 'code' in data and data['code'] == 0:
                 is_available = True
                 message = "Username is available"
+                logger.info(f"AVAILABLE USERNAME FOUND (alt API): {username} - Response: {data}")
             else:
                 code = data.get('code', 'unknown')
-                message = data.get('message', 'Unknown reason')
-                message = f"Code: {code}, Message: {message}"
+                reason = data.get('message', 'Unknown reason')
+                message = f"Code: {code}, Message: {reason}"
+                logger.debug(f"Username not available (alt API): {username} - Response: {json.dumps(data)[:150]}")
             
             # Store results
             record_username_check(username, is_available, status_code, message)
