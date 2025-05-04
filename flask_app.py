@@ -30,8 +30,11 @@ def get_bot_statistics():
                 "available_found": 0,
                 "checks_last_24h": 0,
                 "available_last_24h": 0,
+                "errors_count": 0,
+                "errors_last_24h": 0,
                 "success_rate": 0,
-                "success_rate_24h": 0
+                "success_rate_24h": 0,
+                "api_status": "Unknown"
             }
             
         cursor = conn.cursor()
@@ -44,6 +47,12 @@ def get_bot_statistics():
             # Get available found
             cursor.execute("SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE")
             available_found = cursor.fetchone()[0] or 0
+            
+            # Get error count (status_code 0 or >= 400 indicates errors)
+            cursor.execute(
+                "SELECT COUNT(*) FROM checked_usernames WHERE status_code = 0 OR status_code >= 400"
+            )
+            errors_count = cursor.fetchone()[0] or 0
             
             # Get checks in last 24 hours
             cursor.execute(
@@ -59,17 +68,54 @@ def get_bot_statistics():
             )
             available_last_24h = cursor.fetchone()[0] or 0
             
-            # Calculate success rate
-            success_rate = (available_found / total_checked * 100) if total_checked > 0 else 0
-            success_rate_24h = (available_last_24h / checks_last_24h * 100) if checks_last_24h > 0 else 0
+            # Get errors in last 24 hours
+            cursor.execute(
+                "SELECT COUNT(*) FROM checked_usernames WHERE (status_code = 0 OR status_code >= 400) AND checked_at >= %s",
+                (datetime.now() - timedelta(days=1),)
+            )
+            errors_last_24h = cursor.fetchone()[0] or 0
+            
+            # Calculate success rate (excluding errors)
+            valid_checks = total_checked - errors_count
+            valid_checks_24h = checks_last_24h - errors_last_24h
+            
+            success_rate = (available_found / valid_checks * 100) if valid_checks > 0 else 0
+            success_rate_24h = (available_last_24h / valid_checks_24h * 100) if valid_checks_24h > 0 else 0
+            
+            # Check API status based on recent errors
+            cursor.execute(
+                "SELECT COUNT(*) FROM checked_usernames WHERE checked_at >= %s",
+                (datetime.now() - timedelta(minutes=5),)
+            )
+            recent_checks = cursor.fetchone()[0] or 0
+            
+            cursor.execute(
+                "SELECT COUNT(*) FROM checked_usernames WHERE (status_code = 0 OR status_code >= 400) AND checked_at >= %s",
+                (datetime.now() - timedelta(minutes=5),)
+            )
+            recent_errors = cursor.fetchone()[0] or 0
+            
+            # Determine API status
+            api_status = "Healthy"
+            if recent_checks > 0:
+                error_rate = (recent_errors / recent_checks) * 100
+                if error_rate > 50:
+                    api_status = "Critical"
+                elif error_rate > 20:
+                    api_status = "Degraded"
+            elif errors_last_24h > 0:
+                api_status = "Unknown (No Recent Checks)"
             
             return {
                 "total_checked": total_checked,
                 "available_found": available_found,
                 "checks_last_24h": checks_last_24h,
                 "available_last_24h": available_last_24h,
+                "errors_count": errors_count,
+                "errors_last_24h": errors_last_24h,
                 "success_rate": success_rate,
-                "success_rate_24h": success_rate_24h
+                "success_rate_24h": success_rate_24h,
+                "api_status": api_status
             }
         finally:
             conn.close()
@@ -80,8 +126,11 @@ def get_bot_statistics():
             "available_found": 0,
             "checks_last_24h": 0,
             "available_last_24h": 0,
+            "errors_count": 0,
+            "errors_last_24h": 0,
             "success_rate": 0,
-            "success_rate_24h": 0
+            "success_rate_24h": 0,
+            "api_status": "Error"
         }
 
 # Dashboard HTML template

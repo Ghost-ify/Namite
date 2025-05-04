@@ -8,7 +8,7 @@ import discord
 import random
 import re
 from datetime import datetime
-from username_generator import generate_username, validate_username
+from username_generator import generate_username, generate_username_with_length, validate_username
 from roblox_api import check_username_availability
 from database import get_username_status, get_recently_available_usernames
 
@@ -159,6 +159,15 @@ class RobloxUsernameBot:
             # Show recently found available usernames
             await self.send_recent_available(message.channel)
             
+        elif command == "length":
+            # Check usernames of specific length
+            if len(command_parts) < 2:
+                await message.channel.send("⚠️ Please provide a length or length range (e.g., `!roblox length 5` or `!roblox length 5-8`)")
+                return
+                
+            length_param = command_parts[1]
+            await self.handle_length_command(message.channel, length_param)
+            
         else:
             # Unknown command
             await message.channel.send(f"⚠️ Unknown command: `{command}`. Type `!roblox help` for a list of commands.")
@@ -222,6 +231,118 @@ class RobloxUsernameBot:
             logger.error(f"Error checking username {username}: {str(e)}")
             await checking_message.edit(content=f"⚠️ Error checking username: `{username}`. Please try again later.")
     
+    async def handle_length_command(self, channel, length_param):
+        """Handle the !roblox length command to check usernames of specific length."""
+        # Check if param is a single length or a range
+        try:
+            if '-' in length_param:
+                # A range of lengths
+                min_length, max_length = map(int, length_param.split('-'))
+                
+                # Validate range
+                if min_length < 3 or max_length > 20 or min_length > max_length:
+                    await channel.send("⚠️ Invalid length range. Min must be ≥3, max must be ≤20, and min must be ≤ max.")
+                    return
+            else:
+                # A single length
+                length = int(length_param)
+                min_length = max_length = length
+                
+                # Validate length
+                if length < 3 or length > 20:
+                    await channel.send("⚠️ Invalid length. Usernames must be between 3 and 20 characters.")
+                    return
+        except ValueError:
+            await channel.send("⚠️ Invalid format. Please specify a number (e.g., `5`) or a range (e.g., `5-8`).")
+            return
+        
+        # Send initial message
+        message = await channel.send(f"🔍 Generating and checking usernames with length {min_length}{' to '+str(max_length) if min_length != max_length else ''}...")
+        
+        # Generate and check 5 usernames with the specified length
+        results = []
+        errors = 0
+        
+        for _ in range(5):  # Check 5 usernames
+            username = generate_username_with_length(min_length, max_length)
+            
+            try:
+                # Send a typing indicator to show progress
+                await channel.trigger_typing()
+                
+                # Check availability
+                is_available, status_code, response_message = await check_username_availability(username)
+                
+                # Add to results
+                results.append({
+                    'username': username,
+                    'is_available': is_available,
+                    'message': response_message
+                })
+                
+                if is_available:
+                    self.stats['available_found'] += 1
+                
+                # Update total checked
+                self.stats['total_checked'] += 1
+                
+            except Exception as e:
+                logger.error(f"Error checking username {username}: {str(e)}")
+                errors += 1
+        
+        # Create an embed with the results
+        embed = discord.Embed(
+            title=f"Username Search Results ({min_length}{'-'+str(max_length) if min_length != max_length else ''} chars)",
+            description=f"Checked {len(results)} usernames of specified length",
+            color=0x3498db  # Blue
+        )
+        
+        # Add available usernames
+        available = [r for r in results if r['is_available']]
+        if available:
+            available_text = '\n'.join([f"• **{r['username']}**" for r in available])
+            embed.add_field(
+                name=f"✅ Available ({len(available)})",
+                value=available_text,
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="❌ No Available Usernames Found",
+                value="None of the generated usernames were available. Try again or try a different length range.",
+                inline=False
+            )
+        
+        # Add unavailable usernames
+        unavailable = [r for r in results if not r['is_available']]
+        if unavailable:
+            unavailable_text = '\n'.join([f"• {r['username']}" for r in unavailable[:3]])  # Show only first 3
+            if len(unavailable) > 3:
+                unavailable_text += f"\n• ...and {len(unavailable) - 3} more"
+            embed.add_field(
+                name=f"❌ Unavailable ({len(unavailable)})",
+                value=unavailable_text,
+                inline=False
+            )
+        
+        # Add errors if any
+        if errors > 0:
+            embed.add_field(
+                name="⚠️ Errors",
+                value=f"{errors} username(s) could not be checked due to API errors.",
+                inline=False
+            )
+        
+        # Add how to claim information
+        embed.add_field(
+            name="🔍 How to Claim",
+            value="Go to https://www.roblox.com/signup and enter an available username before someone else claims it!",
+            inline=False
+        )
+        
+        # Edit the original message with the results
+        await message.edit(content=None, embed=embed)
+    
     async def send_help_message(self, channel):
         """Send help information about the bot and its commands."""
         embed = discord.Embed(
@@ -234,6 +355,8 @@ class RobloxUsernameBot:
             name="Commands",
             value=(
                 "🔹 `!roblox check <username>` - Check if a specific username is available\n"
+                "🔹 `!roblox length <number>` - Generate and check usernames of a specific length\n"
+                "🔹 `!roblox length <min>-<max>` - Check usernames in a length range\n"
                 "🔹 `!roblox stats` - Show bot statistics\n"
                 "🔹 `!roblox recent` - Show recently found available usernames\n"
                 "🔹 `!roblox help` - Show this help message"
@@ -316,59 +439,66 @@ class RobloxUsernameBot:
             # Generate a username
             username = generate_username()
             
-            # Update stats (use atomic operation)
-            self.stats['total_checked'] += 1
-            
             logger.info(f"Checking availability of username: {username}")
             
             # Check if it's available
-            is_available, status_code, message = await check_username_availability(username)
-            
-            if is_available:
-                self.stats['available_found'] += 1
-                logger.info(f"Available username found: {username}")
+            try:
+                is_available, status_code, message = await check_username_availability(username)
                 
-                # Create an embed message for the available username
-                embed = discord.Embed(
-                    title="✨ Available Roblox Username Found! ✨",
-                    description=f"**{username}**",
-                    color=0x00ff00  # Green color
-                )
-                
-                # Add username properties
-                username_length = len(username)
-                is_valuable = username_length <= 4
-                
-                embed.add_field(name="📏 Length", value=str(username_length), inline=True)
-                embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
-                embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
-                
-                # Add timestamp and additional information
-                embed.add_field(
-                    name="🔍 How to Claim",
-                    value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
-                    inline=False
-                )
-                
-                # Add statistics
-                success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
-                embed.add_field(
-                    name="📊 Statistics",
-                    value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
-                    inline=False
-                )
-                
-                embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
-                
-                # Determine if we should ping for this username
-                # Ping for 3-4 character usernames as they're more valuable
-                if is_valuable:
-                    ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
-                    await channel.send(content=ping_message, embed=embed)
+                # Only update stats for successful API calls (not errors)
+                if status_code != -1:
+                    # Update stats (use atomic operation)
+                    self.stats['total_checked'] += 1
+                    
+                    if is_available:
+                        self.stats['available_found'] += 1
+                        logger.info(f"Available username found: {username}")
+                        
+                        # Create an embed message for the available username
+                        embed = discord.Embed(
+                            title="✨ Available Roblox Username Found! ✨",
+                            description=f"**{username}**",
+                            color=0x00ff00  # Green color
+                        )
+                        
+                        # Add username properties
+                        username_length = len(username)
+                        is_valuable = username_length <= 4
+                        
+                        embed.add_field(name="📏 Length", value=str(username_length), inline=True)
+                        embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                        embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
+                        
+                        # Add timestamp and additional information
+                        embed.add_field(
+                            name="🔍 How to Claim",
+                            value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
+                            inline=False
+                        )
+                        
+                        # Add statistics
+                        success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
+                        embed.add_field(
+                            name="📊 Statistics",
+                            value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+                            inline=False
+                        )
+                        
+                        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+                        
+                        # Determine if we should ping for this username
+                        # Ping for 3-4 character usernames as they're more valuable
+                        if is_valuable:
+                            ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
+                            await channel.send(content=ping_message, embed=embed)
+                        else:
+                            await channel.send(embed=embed)
+                    else:
+                        logger.debug(f"Username '{username}' not available. Reason: {message}")
                 else:
-                    await channel.send(embed=embed)
-            else:
-                logger.debug(f"Username '{username}' not available. Reason: {message}")
+                    logger.warning(f"API error when checking username '{username}': {message}")
+            except Exception as api_error:
+                logger.error(f"Error in API call for username {username}: {str(api_error)}")
                 
             return True
         except Exception as e:

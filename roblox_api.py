@@ -150,8 +150,11 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     Returns:
         Tuple[bool, int, str]: A tuple containing:
             - Boolean indicating if the username is available
-            - Status code from the API
+            - Status code from the API (or -1 for errors)
             - Message or reason for availability status
+    
+    Raises:
+        Exception: If there's an error with the API requests that can't be handled
     """
     # Check in-memory cache first (very recent checks)
     current_time = time.time()

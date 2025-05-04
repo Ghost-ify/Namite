@@ -126,26 +126,57 @@ def generate_word_like(length: int) -> str:
     
     return result
 
-def generate_username() -> str:
+def generate_username_with_length(min_length: int = 3, max_length: int = 6) -> str:
     """
-    Generate a random Roblox-style username following these rules:
-    - Length: 3-20 characters
-    - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
-    - Cannot be fully numeric
-    - Cannot start or end with an underscore
-    - Maximum one underscore
+    Generate a random Roblox-style username within a specific length range.
+    
+    Args:
+        min_length (int): Minimum username length (must be at least 3)
+        max_length (int): Maximum username length (must be at most 20)
     
     Returns:
-        str: A randomly generated username
+        str: A randomly generated username within the specified length range
     """
+    # Ensure valid length boundaries
+    min_length = max(3, min(min_length, 20))
+    max_length = max(min_length, min(max_length, 20))
+    
     # Try to generate a valid username that's not in cooldown
-    for _ in range(10):  # Try up to 10 times
-        # Choose a random pattern from our list
-        pattern_func = random.choice(PATTERNS)
+    for _ in range(15):  # Try up to 15 times for more chances within the range
+        # Choose a pattern based on length range
+        if min_length <= 4 and max_length <= 6:
+            # For shorter usernames, prioritize short patterns
+            pattern_options = [
+                lambda: ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(min_length, max_length))),
+                lambda: generate_word_like(random.randint(min_length, max_length)),
+                lambda: ''.join(random.choices(string.ascii_letters, k=random.randint(min_length, max_length)))
+            ]
+            if max_length >= 5:  # Only add underscore pattern if length allows
+                pattern_options.append(
+                    lambda: ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(1, 2))) + 
+                           '_' + 
+                           ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(1, max_length-2)))
+                )
+        else:
+            # For longer usernames
+            pattern_options = [
+                lambda: ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(min_length, max_length))),
+                lambda: generate_word_like(random.randint(min_length, max_length)),
+                lambda: ''.join(random.choices(string.ascii_letters, k=random.randint(min_length, max_length)))
+            ]
+            # Add underscore pattern if length allows
+            if max_length >= 5:
+                pattern_options.append(
+                    lambda: ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(2, max_length//2))) + 
+                           '_' + 
+                           ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(min_length-3, max_length//2)))
+                )
+        
+        pattern_func = random.choice(pattern_options)
         username = pattern_func()
         
-        # Ensure 3-20 character length
-        if len(username) < 3 or len(username) > 20:
+        # Ensure length constraints
+        if len(username) < min_length or len(username) > max_length:
             continue
             
         # Ensure no underscore at start or end
@@ -180,13 +211,29 @@ def generate_username() -> str:
         
         # Check if username is in cooldown period (3 days)
         if not is_username_in_cooldown(username):
-            logger.debug(f"Generated username: {username}")
+            logger.debug(f"Generated username with length {len(username)}: {username}")
             return username
     
-    # Fallback in case we couldn't generate a valid username after 10 tries
-    fallback = ''.join(random.choices(string.ascii_letters, k=3)) + str(random.randint(0, 9))
+    # Fallback in case we couldn't generate a valid username after 15 tries
+    fallback_length = random.randint(min_length, max_length)
+    fallback = ''.join(random.choices(string.ascii_letters, k=fallback_length-1)) + str(random.randint(0, 9))
     logger.debug(f"Generated fallback username: {fallback}")
     return fallback
+
+def generate_username() -> str:
+    """
+    Generate a random Roblox-style username following these rules:
+    - Length: 3-6 characters (default range for auto-checking)
+    - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
+    - Cannot be fully numeric
+    - Cannot start or end with an underscore
+    - Maximum one underscore
+    
+    Returns:
+        str: A randomly generated username
+    """
+    # Use the general function with default length range of 3-6
+    return generate_username_with_length(3, 6)
 
 def validate_username(username: str) -> bool:
     """
