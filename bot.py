@@ -76,6 +76,18 @@ class RobloxUsernameBot:
         # Username generator settings (min and max length)
         self.min_length = 3
         self.max_length = 6
+        
+        # Roblox chat color algorithm
+        self.chat_colors = [
+            {"name": "Red", "emoji": "🔴"},
+            {"name": "Blue", "emoji": "🔵"},
+            {"name": "Green", "emoji": "🟢"},
+            {"name": "Purple", "emoji": "🟣"},
+            {"name": "Orange", "emoji": "🟠"},
+            {"name": "Yellow", "emoji": "🟡"},
+            {"name": "Pink", "emoji": "🌸"},
+            {"name": "Almond", "emoji": "🟤"}
+        ]
 
     async def on_ready(self):
         """Event handler for when the Discord bot is ready."""
@@ -199,16 +211,18 @@ class RobloxUsernameBot:
                 # Username properties
                 username_length = len(username)
                 is_valuable = username_length <= 4
+                chat_color = self.get_chat_color(username)
                 
                 # Create an embed for available username
                 embed = discord.Embed(
                     title="✅ Username is Available!",
-                    description=f"**{username}**",
+                    description=f"**{username}** {chat_color['emoji']}",
                     color=0x00ff00  # Green
                 )
                 
                 embed.add_field(name="📏 Length", value=str(username_length), inline=True)
                 embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
                 embed.add_field(name="💎 Valuable", value=str(is_valuable), inline=True)
                 
                 embed.add_field(
@@ -314,7 +328,12 @@ class RobloxUsernameBot:
         # Add available usernames
         available = [r for r in results if r['is_available']]
         if available:
-            available_text = '\n'.join([f"• **{r['username']}**" for r in available])
+            available_text = ""
+            for r in available:
+                username = r['username']
+                chat_color = self.get_chat_color(username)
+                available_text += f"• **{username}** {chat_color['emoji']} ({chat_color['name']})\n"
+                
             embed.add_field(
                 name=f"✅ Available ({len(available)})",
                 value=available_text,
@@ -471,18 +490,20 @@ class RobloxUsernameBot:
                         # Username properties
                         username_length = len(username)
                         is_valuable = username_length <= 4
+                        chat_color = self.get_chat_color(username)
                         
                         # If it's a valuable username (3-4 chars), send immediately with ping
                         if is_valuable:
                             # Create embed for valuable username
                             embed = discord.Embed(
                                 title="💎 Valuable Username Found! 💎",
-                                description=f"**{username}**",
+                                description=f"**{username}** {chat_color['emoji']}",
                                 color=0xffd700  # Gold color
                             )
                             
                             embed.add_field(name="📏 Length", value=str(username_length), inline=True)
                             embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                            embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
                             embed.add_field(name="💎 Valuable", value="Yes", inline=True)
                             
                             # Add timestamp and claim information
@@ -666,6 +687,27 @@ class RobloxUsernameBot:
         if self.batch_timer is not None:
             self.batch_timer.cancel()
             self.batch_timer = None
+    
+    def get_chat_color(self, username):
+        """
+        Determine the Roblox chat color for a username.
+        Colors cycle in this order: Red, Blue, Green, Purple, Orange, Yellow, Pink, Almond
+        
+        Args:
+            username (str): The Roblox username to analyze
+            
+        Returns:
+            dict: Dictionary with color name and emoji
+        """
+        # Calculate color index based on the sum of character values
+        # This is a simplified algorithm to match Roblox's color system
+        total = 0
+        for char in username:
+            total += ord(char)
+        
+        # Get color index (0-7 for the 8 colors)
+        color_index = total % 8
+        return self.chat_colors[color_index]
     
     def run(self):
         """Run the Discord bot."""
