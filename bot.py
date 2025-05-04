@@ -398,7 +398,7 @@ class RobloxUsernameBot:
         
         embed.add_field(
             name="🔍 Search Strategy",
-            value=f"• Checking up to {self.parallel_checks} usernames in parallel\n• Following 3-6 character username rules\n• 3-day cooldown for rechecking usernames",
+            value=f"• Checking up to {self.parallel_checks} usernames in parallel\n• Following 3-20 character username rules\n• 3-day cooldown for rechecking usernames",
             inline=False
         )
         
