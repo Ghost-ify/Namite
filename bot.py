@@ -67,6 +67,15 @@ class RobloxUsernameBot:
         
         # Semaphore to limit concurrent API requests
         self.semaphore = None
+        
+        # For batching available usernames
+        self.batch_size = 5
+        self.pending_usernames = []
+        self.batch_timer = None
+        
+        # Username generator settings (min and max length)
+        self.min_length = 3
+        self.max_length = 6
 
     async def on_ready(self):
         """Event handler for when the Discord bot is ready."""
@@ -290,10 +299,15 @@ class RobloxUsernameBot:
                 logger.error(f"Error checking username {username}: {str(e)}")
                 errors += 1
         
+        # Update the bot's generator settings for future automatic checks
+        self.min_length = min_length
+        self.max_length = max_length
+        logger.info(f"Updated automatic generator settings to length: {min_length}-{max_length}")
+        
         # Create an embed with the results
         embed = discord.Embed(
             title=f"Username Search Results ({min_length}{'-'+str(max_length) if min_length != max_length else ''} chars)",
-            description=f"Checked {len(results)} usernames of specified length",
+            description=f"Checked {len(results)} usernames of specified length\n**Auto-generator now set to this length range**",
             color=0x3498db  # Blue
         )
         
@@ -436,8 +450,8 @@ class RobloxUsernameBot:
     async def check_username(self, channel):
         """Check a single username and report if available."""
         try:
-            # Generate a username
-            username = generate_username()
+            # Generate a username using custom length settings
+            username = generate_username_with_length(self.min_length, self.max_length)
             
             logger.info(f"Checking availability of username: {username}")
             
