@@ -6,10 +6,52 @@ import asyncio
 import aiohttp
 import logging
 import time
+import random
+import math
 from typing import Tuple, Optional, Dict, List, Any
 from database import record_username_check, is_username_in_cooldown, get_username_status
 
 logger = logging.getLogger('roblox_username_bot')
+
+# Browser simulation headers
+BROWSER_HEADERS = [
+    {
+        # Chrome on Windows
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "DNT": "1",
+        "Cache-Control": "no-cache"
+    },
+    {
+        # Firefox on macOS
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Pragma": "no-cache"
+    },
+    {
+        # Safari on iOS
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive"
+    },
+    {
+        # Edge on Windows
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Referer": "https://www.roblox.com/"
+    }
+]
 
 # Roblox API endpoints for username validation (with fallback)
 API_ENDPOINTS = [
@@ -21,7 +63,8 @@ API_ENDPOINTS = [
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
         "success_streak": 0,  # Count of consecutive successful requests
-        "enabled": True  # Whether this API is currently enabled
+        "enabled": True,  # Whether this API is currently enabled
+        "headers_index": 0  # Index of headers to use, will rotate
     },
     {
         "url": "https://users.roblox.com/v1/usernames/validate",
@@ -31,7 +74,30 @@ API_ENDPOINTS = [
         "rate_limit_count": 0,  # Count of 429 responses
         "last_request": 0,  # Timestamp of last request
         "success_streak": 0,  # Count of consecutive successful requests
-        "enabled": True  # Whether this API is currently enabled
+        "enabled": True,  # Whether this API is currently enabled
+        "headers_index": 1  # Index of headers to use, will rotate
+    },
+    {
+        "url": "https://accountsettings.roblox.com/v1/usernames/validate",
+        "params": {"username": ""},
+        "name": "Roblox Account Settings API",
+        "delay": 0.6,  # Start with slightly higher delay for this endpoint
+        "rate_limit_count": 0,
+        "last_request": 0,
+        "success_streak": 0,
+        "enabled": True,
+        "headers_index": 2
+    },
+    {
+        "url": "https://www.roblox.com/UserCheck/doesusernameexist",
+        "params": {"username": ""},
+        "name": "Roblox Legacy API",
+        "delay": 0.7,  # Higher delay for legacy endpoint
+        "rate_limit_count": 0,
+        "last_request": 0,
+        "success_streak": 0,
+        "enabled": True,
+        "headers_index": 3
     }
 ]
 
@@ -45,20 +111,77 @@ _session: Optional[aiohttp.ClientSession] = None
 memory_cache: Dict[str, Tuple[bool, int, str, float]] = {}
 MEMORY_CACHE_EXPIRY = 60  # 1 minute in seconds
 
-async def get_session() -> aiohttp.ClientSession:
+# Track session creation time to cycle connections
+_session_creation_time = 0
+_max_session_age = 60 * 10  # 10 minutes before creating a new session
+
+# Random source ports to simulate multiple client IPs
+SOURCE_PORTS = list(range(10000, 65000, 250))  # Non-privileged ports with gaps
+
+async def get_session(endpoint=None) -> aiohttp.ClientSession:
     """
-    Get or create a global aiohttp session.
-    Using a single session for multiple requests is more efficient.
+    Get or create a global aiohttp session with simulated browser headers.
+    Using a single session for multiple requests is more efficient,
+    but we also want to rotate headers and connection parameters to avoid detection.
+    
+    Args:
+        endpoint (dict, optional): Endpoint configuration with headers_index
     """
-    global _session
-    if _session is None or _session.closed:
-        _session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=5),  # 5 second timeout
-            headers={
-                "User-Agent": "RobloxUsernameChecker/1.0",
-                "Accept": "application/json"
-            }
+    global _session, _session_creation_time
+    
+    # Determine if we need a new session due to age
+    current_time = time.time()
+    session_age = current_time - _session_creation_time
+    
+    if _session is None or _session.closed or session_age > _max_session_age:
+        # Close existing session if it exists
+        if _session is not None and not _session.closed:
+            try:
+                await _session.close()
+            except Exception:
+                pass  # Ignore errors when closing
+        
+        # Select headers - either use endpoint specific or random
+        headers_index = endpoint["headers_index"] if endpoint else random.randint(0, len(BROWSER_HEADERS) - 1)
+        headers = BROWSER_HEADERS[headers_index].copy()
+        
+        # Add some entropy to the headers to avoid fingerprinting
+        if random.random() < 0.3:  # 30% chance of adding X-Requested-With
+            headers["X-Requested-With"] = "XMLHttpRequest"
+        
+        if random.random() < 0.5:  # 50% chance of adding Origin and Referer
+            origin = "https://www.roblox.com"
+            referer = f"{origin}/{random.choice(['home', 'discover', 'catalog', 'games'])}"
+            headers["Origin"] = origin
+            headers["Referer"] = referer
+        
+        # Add cache breaking with random viewport size like a real browser
+        width = random.choice([1366, 1440, 1536, 1920, 2560])
+        height = random.choice([768, 900, 1080, 1200, 1440])
+        headers["Viewport-Width"] = str(width)
+        headers["Viewport-Height"] = str(height)
+        
+        # Configure TCP source port cycling
+        # This can help avoid rate limiting that targets a specific client IP+port combination
+        tcp_connector = aiohttp.TCPConnector(
+            force_close=True,  # Don't keep connections alive between requests
+            ssl=False,  # Roblox API doesn't need fancy SSL verification
+            limit=10,   # Limit to 10 connections at once
+            ttl_dns_cache=300,  # Cache DNS for 5 minutes
+            local_addr=('0.0.0.0', random.choice(SOURCE_PORTS))  # Random client port
         )
+        
+        # Create a new session with random browser headers
+        _session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=10),  # 10 second timeout
+            headers=headers,
+            connector=tcp_connector,
+            cookies={}  # Start with empty cookies
+        )
+        
+        _session_creation_time = current_time
+        logger.info(f"Created new HTTP session with {headers.get('User-Agent', '')[:30]}...")
+        
     return _session
 
 def update_api_delays():
