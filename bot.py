@@ -13,7 +13,7 @@ from roblox_api import check_username_availability
 logger = logging.getLogger('roblox_username_bot')
 
 class RobloxUsernameBot:
-    def __init__(self, token, channel_id, check_interval=60):
+    def __init__(self, token, channel_id, check_interval=10):
         """
         Initialize the Roblox Username Discord Bot.
         
@@ -44,6 +44,12 @@ class RobloxUsernameBot:
         
         # Flag to indicate if the username check task is running
         self.task_running = False
+        
+        # Number of parallel username checks to perform
+        self.parallel_checks = 3
+        
+        # Semaphore to limit concurrent API requests
+        self.semaphore = None
 
     async def on_ready(self):
         """Event handler for when the Discord bot is ready."""
@@ -92,6 +98,52 @@ class RobloxUsernameBot:
         """Event handler for Discord errors."""
         logger.error(f"Discord error in {event}: {str(args[0])}")
 
+    async def check_username(self, channel):
+        """Check a single username and report if available."""
+        try:
+            # Generate a username
+            username = generate_username()
+            
+            # Update stats (use atomic operation)
+            self.stats['total_checked'] += 1
+            
+            logger.info(f"Checking availability of username: {username}")
+            
+            # Check if it's available
+            is_available, status_code, message = await check_username_availability(username)
+            
+            if is_available:
+                self.stats['available_found'] += 1
+                logger.info(f"Available username found: {username}")
+                
+                # Create an embed message for the available username
+                embed = discord.Embed(
+                    title="Available Roblox Username Found!",
+                    description=f"**{username}**",
+                    color=0x00ff00  # Green color
+                )
+                
+                embed.add_field(name="Length", value=str(len(username)), inline=True)
+                embed.add_field(name="Contains Underscore", value=str('_' in username), inline=True)
+                embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+                
+                # Add statistics
+                success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
+                embed.add_field(
+                    name="Statistics",
+                    value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+                    inline=False
+                )
+                
+                await channel.send(embed=embed)
+            else:
+                logger.debug(f"Username '{username}' not available. Reason: {message}")
+                
+            return True
+        except Exception as e:
+            logger.error(f"Error checking username: {str(e)}")
+            return False
+    
     async def check_usernames_task(self):
         """Background task to periodically check for available usernames."""
         logger.info(f"Starting username check task (interval: {self.check_interval}s)")
@@ -103,57 +155,30 @@ class RobloxUsernameBot:
         
         logger.info(f"Will post available usernames to channel: {channel.name}")
         
+        # Initialize semaphore for parallel requests
+        self.semaphore = asyncio.Semaphore(self.parallel_checks)
+        
         # Post initial status message
-        await channel.send(f"🤖 **Roblox Username Bot Started**\nChecking for available usernames every {self.check_interval} seconds...")
+        await channel.send(f"🤖 **Roblox Username Bot Started**\nChecking for available usernames in parallel mode (up to {self.parallel_checks} checks at once)")
         
         while True:
             try:
-                # Generate a username
-                username = generate_username()
-                self.stats['total_checked'] += 1
+                # Create a batch of username checking tasks
+                tasks = []
+                for _ in range(self.parallel_checks):
+                    tasks.append(self.check_username(channel))
                 
-                logger.info(f"Checking availability of username: {username}")
+                # Run checks in parallel
+                await asyncio.gather(*tasks)
                 
-                # Check if it's available
-                is_available, status_code, message = await check_username_availability(username)
-                
-                if is_available:
-                    self.stats['available_found'] += 1
-                    logger.info(f"Available username found: {username}")
-                    
-                    # Create an embed message for the available username
-                    embed = discord.Embed(
-                        title="Available Roblox Username Found!",
-                        description=f"**{username}**",
-                        color=0x00ff00  # Green color
-                    )
-                    
-                    embed.add_field(name="Length", value=str(len(username)), inline=True)
-                    embed.add_field(name="Contains Underscore", value=str('_' in username), inline=True)
-                    embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
-                    
-                    # Add statistics
-                    success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
-                    embed.add_field(
-                        name="Statistics",
-                        value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
-                        inline=False
-                    )
-                    
-                    await channel.send(embed=embed)
-                else:
-                    logger.debug(f"Username '{username}' not available. Reason: {message}")
-                
-                # Add some randomness to the check interval to avoid detection patterns
-                jitter = random.uniform(-2, 5)
-                adjusted_interval = max(10, self.check_interval + jitter)  # Ensure minimum of 10 seconds
-                
-                await asyncio.sleep(adjusted_interval)
+                # Add a small delay between batches to avoid hitting rate limits
+                jitter = random.uniform(0.1, 0.5)  # Much smaller jitter for faster operation
+                await asyncio.sleep(jitter)
                 
             except Exception as e:
                 logger.error(f"Error in username check task: {str(e)}")
                 # Wait a bit and continue
-                await asyncio.sleep(10)
+                await asyncio.sleep(2)
 
     def run(self):
         """Run the Discord bot."""

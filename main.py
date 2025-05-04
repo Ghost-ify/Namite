@@ -44,15 +44,15 @@ except ValueError:
     logger.error("CHANNEL_ID must be an integer")
     exit(1)
 
-# Set check interval (in seconds) - default is 60s
+# Set check interval (in seconds) - default is 5s for fast operation
 try:
-    check_interval = int(os.getenv('CHECK_INTERVAL', '60'))
-    if check_interval < 10:
-        logger.warning("CHECK_INTERVAL too low, setting to minimum of 10 seconds")
-        check_interval = 10
+    check_interval = int(os.getenv('CHECK_INTERVAL', '5'))
+    if check_interval < 1:
+        logger.warning("CHECK_INTERVAL too low, setting to minimum of 1 second")
+        check_interval = 1
 except ValueError:
-    logger.warning("Invalid CHECK_INTERVAL value, defaulting to 60 seconds")
-    check_interval = 60
+    logger.warning("Invalid CHECK_INTERVAL value, defaulting to 5 seconds")
+    check_interval = 5
 
 if __name__ == "__main__":
     logger.info("Starting Roblox Username Discord Bot")

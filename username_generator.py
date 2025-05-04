@@ -1,17 +1,54 @@
 """
 Roblox username generator module.
 This file contains functions to generate random usernames following Roblox rules.
+
+The generator creates short, memorable usernames (3-4 characters) to maximize the 
+chance of finding available options.
 """
 import random
 import string
 import logging
+from typing import List, Set
 
 logger = logging.getLogger('roblox_username_bot')
 
-def generate_username():
+# Cached set of previously generated usernames to avoid duplicates
+GENERATED_USERNAMES: Set[str] = set()
+
+# List of common prefixes that can make usernames more appealing
+COOL_PREFIXES = ['X', 'Z', 'Q', 'V', 'Ace', 'Pro', 'Evo', 'Neo', 'Max', 'Sky']
+
+# Various patterns for generating names
+PATTERNS = [
+    # Pattern: Short 3-letter combo
+    lambda: ''.join(random.choices(string.ascii_uppercase + string.digits, k=3)),
+    
+    # Pattern: Two letters + digit
+    lambda: ''.join(random.choices(string.ascii_uppercase, k=2)) + random.choice(string.digits),
+    
+    # Pattern: Digit + two letters
+    lambda: random.choice(string.digits) + ''.join(random.choices(string.ascii_uppercase, k=2)),
+    
+    # Pattern: Letter + underscore + letter
+    lambda: random.choice(string.ascii_uppercase) + '_' + random.choice(string.ascii_uppercase),
+    
+    # Pattern: Very short: letter + digit
+    lambda: random.choice(string.ascii_uppercase) + random.choice(string.digits),
+    
+    # Pattern: Very short: digit + letter
+    lambda: random.choice(string.digits) + random.choice(string.ascii_uppercase),
+    
+    # Pattern: Three letters
+    lambda: ''.join(random.choices(string.ascii_uppercase, k=3)),
+    
+    # Pattern: Ultra-short 1-letter 1-digit combo (these might be very valuable)
+    lambda: random.choice(string.ascii_uppercase) + random.choice(string.digits),
+]
+
+def generate_username() -> str:
     """
     Generate a random Roblox-style username following these rules:
-    - Length: 3-5 characters
+    - Length: 3-4 characters (predominantly, with some 2 character options)
     - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
     - Cannot be fully numeric
     - Cannot start or end with an underscore
@@ -20,62 +57,54 @@ def generate_username():
     Returns:
         str: A randomly generated username
     """
-    # Decide on username length (3-5 characters)
-    length = random.randint(3, 5)
-    
-    # Decide if we'll include an underscore (about 30% chance)
-    include_underscore = random.random() < 0.3
-    
-    # Generate the username
-    if include_underscore:
-        # If we include an underscore, it cannot be at start or end
-        # So we need at least 3 characters
-        if length < 3:
-            length = 3
+    # Try to generate a unique username (not previously generated)
+    for _ in range(5):  # Try up to 5 times to get a unique username
+        # Choose a random pattern from our list
+        pattern_func = random.choice(PATTERNS)
+        username = pattern_func()
+        
+        # Make sure it's not all digits
+        if username.replace('_', '').isdigit():
+            # Replace a random digit with a letter
+            position = random.randint(0, len(username) - 1)
             
-        # Choose position for underscore (not first or last)
-        underscore_position = random.randint(1, length - 2)
+            # Skip if this position has an underscore
+            if username[position] == '_':
+                # Find a non-underscore position
+                non_underscore_positions = [i for i, char in enumerate(username) if char != '_']
+                if non_underscore_positions:
+                    position = random.choice(non_underscore_positions)
+                else:
+                    position = 0
+            
+            # Replace with a random letter
+            username_chars = list(username)
+            username_chars[position] = random.choice(string.ascii_uppercase)
+            username = ''.join(username_chars)
         
-        # Generate characters before underscore
-        before_underscore = ''.join(random.choices(
-            string.ascii_letters + string.digits, 
-            k=underscore_position
-        ))
+        # If we've already generated this username before, try again
+        if username in GENERATED_USERNAMES:
+            continue
         
-        # Generate characters after underscore
-        after_underscore = ''.join(random.choices(
-            string.ascii_letters + string.digits, 
-            k=length - underscore_position - 1
-        ))
+        # Add to our cache of generated usernames
+        GENERATED_USERNAMES.add(username)
         
-        username = before_underscore + '_' + after_underscore
-    else:
-        # Generate username without underscore
-        username = ''.join(random.choices(
-            string.ascii_letters + string.digits, 
-            k=length
-        ))
+        logger.debug(f"Generated username: {username}")
+        return username
     
-    # Check if username is fully numeric, and fix if needed
-    if username.replace('_', '').isdigit():
-        # Replace a random digit with a letter
-        position = random.randint(0, length - 1)
-        
-        # Skip if this position has an underscore
-        if username[position] == '_':
-            # Find a non-underscore position
-            non_underscore_positions = [i for i, char in enumerate(username) if char != '_']
-            if non_underscore_positions:
-                position = random.choice(non_underscore_positions)
-            else:
-                # This should never happen, but just in case
-                logger.warning("Could not find non-underscore position in username")
-                position = 0
-        
-        # Replace with a random letter
-        username_chars = list(username)
-        username_chars[position] = random.choice(string.ascii_letters)
-        username = ''.join(username_chars)
-    
-    logger.debug(f"Generated username: {username}")
-    return username
+    # Fallback in case we couldn't generate a unique username after 5 tries
+    # (extremely unlikely but just to be safe)
+    fallback = ''.join(random.choices(string.ascii_uppercase + string.digits, k=3))
+    logger.debug(f"Generated fallback username: {fallback}")
+    return fallback
+
+# Clean up the cache of generated usernames if it gets too large
+def clean_username_cache(max_size: int = 10000) -> None:
+    """Remove excess usernames from the cache if it gets too large."""
+    if len(GENERATED_USERNAMES) > max_size:
+        # Convert to list, sort by random values, then take the first max_size elements
+        # This randomly removes excess entries from the cache
+        random_order = list(GENERATED_USERNAMES)
+        random.shuffle(random_order)
+        GENERATED_USERNAMES.clear()
+        GENERATED_USERNAMES.update(random_order[:max_size])
