@@ -69,8 +69,8 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     params = {"request.username": username}
     
     # Maximum number of retries for transient errors
-    max_retries = 2
-    retry_delay = 1
+    max_retries = 1
+    retry_delay = 0.5
     
     for attempt in range(max_retries):
         try:

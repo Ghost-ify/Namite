@@ -30,8 +30,14 @@ class RobloxUsernameBot:
         
         # Initialize Discord client with intents
         intents = discord.Intents.default()
-        # Don't require message_content intent for now since we didn't enable it
-        # intents.message_content = True
+        # Try to enable message_content intent (for commands)
+        try:
+            intents.message_content = True
+            logger.info("Message content intent enabled")
+        except Exception as e:
+            logger.warning(f"Could not enable message content intent: {str(e)}")
+            logger.warning("Command functionality will be limited. Please enable MESSAGE CONTENT INTENT in Discord Developer Portal.")
+            
         self.client = discord.Client(intents=intents)
         
         # Set up event handlers
@@ -57,7 +63,7 @@ class RobloxUsernameBot:
         self.task_running = False
         
         # Number of parallel username checks to perform
-        self.parallel_checks = 3
+        self.parallel_checks = 5
         
         # Semaphore to limit concurrent API requests
         self.semaphore = None
@@ -416,8 +422,8 @@ class RobloxUsernameBot:
                 # Run checks in parallel
                 await asyncio.gather(*tasks)
                 
-                # Add a small delay between batches to avoid hitting rate limits
-                jitter = random.uniform(0.1, 0.5)  # Much smaller jitter for faster operation
+                # Minimal delay between batches to avoid hitting rate limits
+                jitter = random.uniform(0.05, 0.2)  # Very small jitter for max speed
                 await asyncio.sleep(jitter)
                 
             except Exception as e:
