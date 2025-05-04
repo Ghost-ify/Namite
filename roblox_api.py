@@ -430,10 +430,12 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
             if 'code' in data and data['code'] == 0:
                 is_available = True
                 message = "Username is available"
+                logger.info(f"AVAILABLE USERNAME FOUND: {username} - Response: {data}")
             else:
                 code = data.get('code', 'unknown')
                 msg = data.get('message', 'Unknown reason')
                 message = f"Code: {code}, Message: {msg}"
+                logger.debug(f"Username not available: {username} - Response: {json.dumps(data)[:150]}")
             
             # Store result in database
             record_username_check(username, is_available, status_code, message)
