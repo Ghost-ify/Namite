@@ -9,6 +9,7 @@ import random
 import math
 import json
 import urllib.parse
+import os
 from typing import Tuple, Optional, Dict, List, Any
 from database import record_username_check, is_username_in_cooldown, get_username_status
 
@@ -125,6 +126,16 @@ SOURCE_PORTS = [20123, 30123, 40123, 50123, 60123]
 import http.client
 import ssl
 
+# Get the Roblox cookie from environment variables
+ROBLOX_COOKIE = os.environ.get("ROBLOX_COOKIE", "")
+# Flag to track if we're using authenticated requests
+USING_AUTH = bool(ROBLOX_COOKIE)
+
+if USING_AUTH:
+    logger.info("Using authenticated Roblox API requests with provided cookie")
+else:
+    logger.info("Using anonymous Roblox API requests (no cookie provided)")
+
 async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple[int, str]:
     """
     Make an HTTP request using the standard library to avoid issues with aiohttp.
@@ -157,6 +168,17 @@ async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple
     # Add some randomization to headers
     if random.random() < 0.3:
         headers["X-Requested-With"] = "XMLHttpRequest"
+    
+    # Add the Roblox cookie if available (for authenticated requests)
+    if USING_AUTH and host.endswith("roblox.com"):
+        headers["Cookie"] = f".ROBLOSECURITY={ROBLOX_COOKIE}"
+        
+        # Add common headers used by Roblox site
+        headers["Origin"] = "https://www.roblox.com"
+        headers["Referer"] = "https://www.roblox.com/"
+        
+        # Add CSRF token header if it's a POST request
+        # For GET requests like availability checks, we don't need this
     
     # Add cache busting to avoid any caching issues
     headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -469,62 +491,66 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
         request_params["username"] = username
     
     try:
-        session = await get_session()
-        async with session.get(endpoint["url"], params=request_params) as response:
-            # Record response status
-            if response.status == 429:
-                # Rate limited
-                endpoint["rate_limit_count"] += 1
-                endpoint["success_streak"] = 0
-                update_api_delays()
-                
-                message = f"All APIs rate limited. Could not check username: {username}"
-                logger.warning(message)
-                record_username_check(username, False, 429, message)
-                memory_cache[username] = (False, 429, message, current_time)
-                return False, 429, message
+        # Make the HTTP request
+        status_code, response_text = await make_http_request(
+            endpoint["url"],
+            request_params,
+            endpoint["headers_index"]
+        )
+        
+        # Record response status
+        if status_code == 429:
+            # Rate limited
+            endpoint["rate_limit_count"] += 1
+            endpoint["success_streak"] = 0
+            update_api_delays()
             
-            # Parse the JSON
-            try:
-                data = await response.json()
-            except Exception:
-                endpoint["success_streak"] = 0
-                message = f"Invalid JSON response from {endpoint['name']}"
-                record_username_check(username, False, response.status, message)
-                memory_cache[username] = (False, response.status, message, current_time)
-                return False, response.status, message
+            message = f"All APIs rate limited. Could not check username: {username}"
+            logger.warning(message)
+            record_username_check(username, False, 429, message)
+            memory_cache[username] = (False, 429, message, current_time)
+            return False, 429, message
+        
+        # Parse the JSON
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError:
+            endpoint["success_streak"] = 0
+            message = f"Invalid JSON response from {endpoint['name']}"
+            record_username_check(username, False, status_code, message)
+            memory_cache[username] = (False, status_code, message, current_time)
+            return False, status_code, message
+        
+        # Process the response
+        if status_code == 200:
+            # Success
+            endpoint["success_streak"] += 1
             
-            # Process the response
-            if response.status == 200:
-                # Success
-                endpoint["success_streak"] += 1
-                
-                is_available = False
-                status_code = response.status
-                message = ""
-                
-                if 'code' in data and data['code'] == 0:
-                    is_available = True
-                    message = "Username is available"
-                else:
-                    code = data.get('code', 'unknown')
-                    message = data.get('message', 'Unknown reason')
-                    message = f"Code: {code}, Message: {message}"
-                
-                # Store results
-                record_username_check(username, is_available, status_code, message)
-                memory_cache[username] = (is_available, status_code, message, current_time)
-                
-                return is_available, status_code, message
+            is_available = False
+            message = ""
+            
+            if 'code' in data and data['code'] == 0:
+                is_available = True
+                message = "Username is available"
             else:
-                # Error
-                endpoint["success_streak"] = 0
-                message = f"API Error: HTTP {response.status} from {endpoint['name']}"
-                record_username_check(username, False, response.status, message)
-                memory_cache[username] = (False, response.status, message, current_time)
-                return False, response.status, message
+                code = data.get('code', 'unknown')
+                message = data.get('message', 'Unknown reason')
+                message = f"Code: {code}, Message: {message}"
+            
+            # Store results
+            record_username_check(username, is_available, status_code, message)
+            memory_cache[username] = (is_available, status_code, message, current_time)
+            
+            return is_available, status_code, message
+        else:
+            # Error
+            endpoint["success_streak"] = 0
+            message = f"API Error: HTTP {status_code} from {endpoint['name']}"
+            record_username_check(username, False, status_code, message)
+            memory_cache[username] = (False, status_code, message, current_time)
+            return False, status_code, message
     
-    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+    except asyncio.TimeoutError as e:
         # Network error with this API
         endpoint["success_streak"] = 0
         endpoint["rate_limit_count"] += 1
