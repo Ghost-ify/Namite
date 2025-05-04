@@ -59,7 +59,10 @@ BROWSER_HEADERS = [
 API_ENDPOINTS = [
     {
         "url": "https://auth.roblox.com/v1/usernames/validate",
-        "params": {"request.username": ""},
+        "params": {
+            "request.username": "",
+            "request.birthday": "1990-01-01"  # Add default birthday
+        },
         "name": "Roblox Auth API",
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
@@ -70,7 +73,11 @@ API_ENDPOINTS = [
     },
     {
         "url": "https://users.roblox.com/v1/usernames/validate",
-        "params": {"username": "", "type": "Username"},
+        "params": {
+            "username": "", 
+            "type": "Username",
+            "birthday": "1990-01-01"  # Add default birthday
+        },
         "name": "Roblox Users API",
         "delay": 0.5,  # Base delay between requests (will be adaptive)
         "rate_limit_count": 0,  # Count of 429 responses
@@ -81,7 +88,10 @@ API_ENDPOINTS = [
     },
     {
         "url": "https://accountsettings.roblox.com/v1/usernames/validate",
-        "params": {"username": ""},
+        "params": {
+            "username": "",
+            "birthday": "1990-01-01"  # Add default birthday
+        },
         "name": "Roblox Account Settings API",
         "delay": 0.6,  # Start with slightly higher delay for this endpoint
         "rate_limit_count": 0,
