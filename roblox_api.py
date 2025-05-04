@@ -3,11 +3,12 @@ Roblox API integration for checking username availability.
 This file contains functions to interact with the Roblox API.
 """
 import asyncio
-import aiohttp
 import logging
 import time
 import random
 import math
+import json
+import urllib.parse
 from typing import Tuple, Optional, Dict, List, Any
 from database import record_username_check, is_username_in_cooldown, get_username_status
 
@@ -104,85 +105,90 @@ API_ENDPOINTS = [
 # Default API to use (will rotate between endpoints)
 current_api_index = 0
 
-# Global session for reuse across requests
-_session: Optional[aiohttp.ClientSession] = None
+# Don't use a global session - creates issues with binding
+# Instead we'll create a new session for each request
 
 # In-memory cache for very recent checks (to avoid hammering the database)
 memory_cache: Dict[str, Tuple[bool, int, str, float]] = {}
 MEMORY_CACHE_EXPIRY = 60  # 1 minute in seconds
 
-# Track session creation time to cycle connections
-_session_creation_time = 0
-_max_session_age = 60 * 10  # 10 minutes before creating a new session
+# Exponential backoff parameters for retries
+MAX_RETRIES = 3
+BASE_DELAY = 1.0
+MAX_DELAY = 10.0
+JITTER_FACTOR = 0.25
 
 # Random source ports to simulate multiple client IPs
-SOURCE_PORTS = list(range(10000, 65000, 250))  # Non-privileged ports with gaps
+# Use only a handful of ports that should be available
+SOURCE_PORTS = [20123, 30123, 40123, 50123, 60123]
 
-async def get_session(endpoint=None) -> aiohttp.ClientSession:
+import http.client
+import ssl
+
+async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple[int, str]:
     """
-    Get or create a global aiohttp session with simulated browser headers.
-    Using a single session for multiple requests is more efficient,
-    but we also want to rotate headers and connection parameters to avoid detection.
+    Make an HTTP request using the standard library to avoid issues with aiohttp.
+    This is a more reliable approach that doesn't require binding to specific ports.
     
     Args:
-        endpoint (dict, optional): Endpoint configuration with headers_index
+        url (str): The URL to request
+        params (dict): Query parameters
+        headers_index (int): Index of headers to use from BROWSER_HEADERS
+        
+    Returns:
+        Tuple[int, str]: Status code and response content
     """
-    global _session, _session_creation_time
+    # Parse the URL
+    parsed_url = urllib.parse.urlparse(url)
+    host = parsed_url.netloc
     
-    # Determine if we need a new session due to age
-    current_time = time.time()
-    session_age = current_time - _session_creation_time
+    # Create the path with query string
+    query_params = []
+    for key, value in params.items():
+        if value:  # Only add parameters with values
+            query_params.append(f"{urllib.parse.quote(key)}={urllib.parse.quote(str(value))}")
     
-    if _session is None or _session.closed or session_age > _max_session_age:
-        # Close existing session if it exists
-        if _session is not None and not _session.closed:
-            try:
-                await _session.close()
-            except Exception:
-                pass  # Ignore errors when closing
+    query_string = "&".join(query_params)
+    path = f"{parsed_url.path}?{query_string}" if query_string else parsed_url.path
+    
+    # Get headers
+    headers = BROWSER_HEADERS[headers_index % len(BROWSER_HEADERS)].copy()
+    
+    # Add some randomization to headers
+    if random.random() < 0.3:
+        headers["X-Requested-With"] = "XMLHttpRequest"
+    
+    # Add cache busting to avoid any caching issues
+    headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    headers["Pragma"] = "no-cache"
+    headers["Expires"] = "0"
+    
+    try:
+        # Use HTTPS if the URL uses https
+        if parsed_url.scheme == "https":
+            # Create an SSL context
+            context = ssl.create_default_context()
+            conn = http.client.HTTPSConnection(host, timeout=10, context=context)
+        else:
+            conn = http.client.HTTPConnection(host, timeout=10)
         
-        # Select headers - either use endpoint specific or random
-        headers_index = endpoint["headers_index"] if endpoint else random.randint(0, len(BROWSER_HEADERS) - 1)
-        headers = BROWSER_HEADERS[headers_index].copy()
+        # Make the request - run in the executor to not block
+        loop = asyncio.get_running_loop()
         
-        # Add some entropy to the headers to avoid fingerprinting
-        if random.random() < 0.3:  # 30% chance of adding X-Requested-With
-            headers["X-Requested-With"] = "XMLHttpRequest"
+        # Execute the request in a separate thread to not block the event loop
+        def perform_request():
+            conn.request("GET", path, headers=headers)
+            response = conn.getresponse()
+            status = response.status
+            content = response.read().decode('utf-8')
+            conn.close()
+            return status, content
         
-        if random.random() < 0.5:  # 50% chance of adding Origin and Referer
-            origin = "https://www.roblox.com"
-            referer = f"{origin}/{random.choice(['home', 'discover', 'catalog', 'games'])}"
-            headers["Origin"] = origin
-            headers["Referer"] = referer
-        
-        # Add cache breaking with random viewport size like a real browser
-        width = random.choice([1366, 1440, 1536, 1920, 2560])
-        height = random.choice([768, 900, 1080, 1200, 1440])
-        headers["Viewport-Width"] = str(width)
-        headers["Viewport-Height"] = str(height)
-        
-        # Configure TCP source port cycling
-        # This can help avoid rate limiting that targets a specific client IP+port combination
-        tcp_connector = aiohttp.TCPConnector(
-            force_close=True,  # Don't keep connections alive between requests
-            ssl=False,  # Roblox API doesn't need fancy SSL verification
-            limit=10,   # Limit to 10 connections at once
-            ttl_dns_cache=300,  # Cache DNS for 5 minutes
-            local_addr=('0.0.0.0', random.choice(SOURCE_PORTS))  # Random client port
-        )
-        
-        # Create a new session with random browser headers
-        _session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=10),  # 10 second timeout
-            headers=headers,
-            connector=tcp_connector,
-            cookies={}  # Start with empty cookies
-        )
-        
-        _session_creation_time = current_time
-        logger.info(f"Created new HTTP session with {headers.get('User-Agent', '')[:30]}...")
-        
-    return _session
+        status, content = await loop.run_in_executor(None, perform_request)
+        return status, content
+    except Exception as e:
+        logger.error(f"HTTP request error for {url}: {str(e)}")
+        return -1, str(e)
 
 def update_api_delays():
     """Update API endpoint delays based on their rate limit history."""
@@ -308,112 +314,120 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     else:
         request_params["username"] = username
     
-    # No retries - we'll switch APIs if there's an issue
+    # Make the HTTP request
     try:
-        session = await get_session()
-        async with session.get(endpoint["url"], params=request_params) as response:
-            # Record the response status
-            if response.status == 429:
-                # Rate limited - increase the count and update delays
-                endpoint["rate_limit_count"] += 1
-                endpoint["success_streak"] = 0
-                update_api_delays()
-                
-                # Try the other API instead
-                logger.warning(f"{endpoint['name']} rate limited. Switching to alternate API.")
-                alt_index = (api_index + 1) % len(API_ENDPOINTS)
-                return await check_with_specific_api(username, alt_index)
-            
-            # Attempt to parse the JSON response
-            try:
-                data = await response.json()
-            except Exception:
-                # If we can't parse JSON, treat as an error
-                endpoint["success_streak"] = 0
-                message = f"Invalid JSON response from {endpoint['name']}"
-                record_username_check(username, False, response.status, message)
-                memory_cache[username] = (False, response.status, message, current_time)
-                return False, response.status, message
-            
-            # Check the status code
-            if response.status == 200:
-                # Increment success streak
-                endpoint["success_streak"] += 1
-                
-                # Process response
-                is_available = False
-                status_code = response.status
-                message = ""
-                
-                # For both APIs, code 0 means available
-                if 'code' in data and data['code'] == 0:
-                    is_available = True
-                    message = "Username is available"
-                else:
-                    code = data.get('code', 'unknown')
-                    message = data.get('message', 'Unknown reason')
-                    message = f"Code: {code}, Message: {message}"
-                
-                # Store result in database
-                record_username_check(username, is_available, status_code, message)
-                
-                # Store in memory cache
-                memory_cache[username] = (is_available, status_code, message, current_time)
-                
-                # If we've had several successes in a row, maybe adjust delays
-                if endpoint["success_streak"] >= 10:
-                    update_api_delays()
-                
-                return is_available, status_code, message
-            else:
-                # Other error
-                endpoint["success_streak"] = 0
-                message = f"API Error: HTTP {response.status} from {endpoint['name']}"
-                
-                # Store failed result
-                record_username_check(username, False, response.status, message)
-                memory_cache[username] = (False, response.status, message, current_time)
-                
-                return False, response.status, message
-                
-    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-        # Network error - increment error count and possibly disable endpoint
-        endpoint["success_streak"] = 0
-        endpoint["rate_limit_count"] += 1
-        err_type = "Timeout" if isinstance(e, asyncio.TimeoutError) else "Network"
-        logger.error(f"{err_type} error with {endpoint['name']}: {str(e)}")
+        # Try to make the request with exponential backoff
+        status_code, response_text = await make_http_request(
+            endpoint["url"], 
+            request_params,
+            endpoint["headers_index"]
+        )
         
-        # If we've had multiple failures in a row, potentially disable this endpoint
-        if endpoint["rate_limit_count"] >= 5:
-            logger.warning(f"Disabling problematic endpoint: {endpoint['name']} due to repeated failures")
-            endpoint["enabled"] = False
+        # Handle rate limiting
+        if status_code == 429:
+            # Rate limited - increase the count and update delays
+            endpoint["rate_limit_count"] += 1
+            endpoint["success_streak"] = 0
+            update_api_delays()
             
-            # Make sure we have at least one endpoint enabled
-            any_enabled = False
-            for ep in API_ENDPOINTS:
-                if ep["enabled"]:
-                    any_enabled = True
-                    break
-                    
-            if not any_enabled:
-                logger.warning("All endpoints were disabled! Re-enabling primary endpoint.")
-                API_ENDPOINTS[0]["enabled"] = True
-                API_ENDPOINTS[0]["rate_limit_count"] = 0
-        
-        # Try an alternate API
-        alt_index = None
-        for i in range(1, len(API_ENDPOINTS)):
-            check_index = (api_index + i) % len(API_ENDPOINTS)
-            if API_ENDPOINTS[check_index]["enabled"]:
-                alt_index = check_index
-                break
-                
-        if alt_index is not None:
+            # Try another API endpoint
+            logger.warning(f"{endpoint['name']} rate limited. Switching to alternate API.")
+            alt_index = (api_index + 1) % len(API_ENDPOINTS)
             return await check_with_specific_api(username, alt_index)
-        else:
-            # Fall back to the primary endpoint if no alternatives
-            return await check_with_specific_api(username, 0)
+        
+        # Error with the request itself
+        if status_code == -1:
+            # Network error
+            endpoint["success_streak"] = 0
+            endpoint["rate_limit_count"] += 1
+            message = f"Network error with {endpoint['name']}: {response_text}"
+            logger.error(message)
             
+            # If we've had multiple failures in a row, potentially disable this endpoint
+            if endpoint["rate_limit_count"] >= 5:
+                logger.warning(f"Disabling problematic endpoint: {endpoint['name']} due to repeated failures")
+                endpoint["enabled"] = False
+                
+                # Make sure we have at least one endpoint enabled
+                any_enabled = False
+                for ep in API_ENDPOINTS:
+                    if ep["enabled"]:
+                        any_enabled = True
+                        break
+                
+                if not any_enabled:
+                    logger.warning("All endpoints were disabled! Re-enabling primary endpoint with reset error count.")
+                    API_ENDPOINTS[0]["enabled"] = True
+                    API_ENDPOINTS[0]["rate_limit_count"] = 0
+            
+            # Try an alternate API
+            alt_index = None
+            for i in range(1, len(API_ENDPOINTS)):
+                check_index = (api_index + i) % len(API_ENDPOINTS)
+                if API_ENDPOINTS[check_index]["enabled"]:
+                    alt_index = check_index
+                    break
+            
+            if alt_index is not None:
+                return await check_with_specific_api(username, alt_index)
+            else:
+                # Record the failure
+                record_username_check(username, False, status_code, message)
+                memory_cache[username] = (False, status_code, message, current_time)
+                return False, status_code, message
+        
+        # Attempt to parse the JSON response
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError:
+            # If we can't parse JSON, treat as an error
+            endpoint["success_streak"] = 0
+            message = f"Invalid JSON response from {endpoint['name']}"
+            logger.error(f"{message}: {response_text[:100]}")
+            record_username_check(username, False, status_code, message)
+            memory_cache[username] = (False, status_code, message, current_time)
+            return False, status_code, message
+        
+        # Check the status code
+        if status_code == 200:
+            # Increment success streak
+            endpoint["success_streak"] += 1
+            
+            # Process response
+            is_available = False
+            message = ""
+            
+            # For Roblox APIs, code 0 means available
+            if 'code' in data and data['code'] == 0:
+                is_available = True
+                message = "Username is available"
+            else:
+                code = data.get('code', 'unknown')
+                msg = data.get('message', 'Unknown reason')
+                message = f"Code: {code}, Message: {msg}"
+            
+            # Store result in database
+            record_username_check(username, is_available, status_code, message)
+            
+            # Store in memory cache
+            memory_cache[username] = (is_available, status_code, message, current_time)
+            
+            # If we've had several successes in a row, maybe adjust delays
+            if endpoint["success_streak"] >= 10:
+                update_api_delays()
+            
+            return is_available, status_code, message
+        else:
+            # Other error
+            endpoint["success_streak"] = 0
+            message = f"API Error: HTTP {status_code} from {endpoint['name']}"
+            
+            # Store failed result
+            record_username_check(username, False, status_code, message)
+            memory_cache[username] = (False, status_code, message, current_time)
+            
+            return False, status_code, message
+                
     except Exception as e:
         # Unexpected error
         endpoint["success_streak"] = 0
