@@ -8,9 +8,11 @@ It also provides a Flask web application to monitor the bot's status.
 from flask_app import app
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from bot import RobloxUsernameBot
 from database import init_database
+from roblox_api import verify_cookie
 
 # Configure logging
 logging.basicConfig(
@@ -58,8 +60,31 @@ except ValueError:
 # Initialize the database tables
 init_database()
 
+# Authenticate with Roblox if a cookie is available
+async def authenticate_roblox():
+    """Authenticate with Roblox using the provided cookie."""
+    try:
+        result = await verify_cookie()
+        if result:
+            logger.info("Roblox authentication successful")
+        else:
+            logger.warning("Roblox authentication failed or cookie not provided")
+    except Exception as e:
+        logger.error(f"Error during Roblox authentication: {str(e)}")
+
+# Create an event loop to run the authentication
+def run_auth():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(authenticate_roblox())
+    loop.close()
+
 if __name__ == "__main__":
     logger.info("Starting Roblox Username Discord Bot")
+    
+    # Run Roblox authentication before starting the bot
+    run_auth()
+    
     bot = RobloxUsernameBot(
         token=discord_token,
         channel_id=channel_id,
