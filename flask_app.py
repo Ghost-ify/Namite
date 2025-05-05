@@ -302,7 +302,13 @@ DASHBOARD_HTML = """
             <div class="cookie-grid">
                         {% for status in stats.cookie_status %}
                     {% set error_rate = status.error_count / max(1, (status.error_count + status.success_count)) * 100 %}
-                    {% set checks_per_min = ((status.success_count|default(0) + status.error_count|default(0)) / 5)|round(1) %}
+                    {% set stats_calc = namespace(success=0, errors=0) %}
+                                {% for status in stats.cookie_status %}
+                                    {% set stats_calc.success = stats_calc.success + status.success_count|default(0) %}
+                                    {% set stats_calc.errors = stats_calc.errors + status.error_count|default(0) %}
+                                {% endfor %}
+                                {% set total = stats_calc.success + stats_calc.errors %}
+                                {% set checks_per_min = stats.checks_last_24h|default(0) %}
                     <div class="cookie-card">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <strong>Cookie #{{ loop.index }}</strong>
