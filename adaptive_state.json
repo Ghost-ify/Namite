@@ -1,8 +1,8 @@
 {
   "length_weights": {
-    "3": 1.2717347482564874,
-    "4": 1.059778956880406,
-    "5": 16.677569276925283,
+    "3": 0.9270946314789794,
+    "4": 0.772578859565816,
+    "5": 52.80794800287853,
     "6": 133.32243072307475,
     "7": 5.0,
     "8": 3.0,
@@ -11,11 +11,11 @@
   "parallel_checks": 10,
   "pattern_weights": {
     "type:ULUULL": 2.0,
-    "has_underscore:False": 85.0,
-    "has_number:False": 76.0,
-    "length:6": 116.0,
+    "has_underscore:False": 90.0,
+    "has_number:False": 78.0,
+    "length:6": 119.0,
     "type:LNUULL": 1.0,
-    "has_number:True": 61.0,
+    "has_number:True": 64.0,
     "type:LULNUL": 1.0,
     "type:LUULUL": 1.0,
     "type:LUULLU": 1.0,
@@ -27,7 +27,7 @@
     "underscore_pos:1": 27.0,
     "type:LLULLL": 1.0,
     "type:UNLNL": 1.0,
-    "length:5": 21.0,
+    "length:5": 23.0,
     "type:UUULLL": 2.0,
     "type:LULUNU": 1.0,
     "type:UULNLU": 1.0,
@@ -134,10 +134,15 @@
     "type:UU_UUU": 1.0,
     "type:LLLULU": 1.0,
     "type:L_NNUL": 1.0,
-    "type:ULLLUL": 1.0
+    "type:ULLLUL": 1.0,
+    "type:LLULUL": 1.0,
+    "type:LUNLLL": 1.0,
+    "type:LLUUUU": 1.0,
+    "type:LULNL": 1.0,
+    "type:LNLLL": 1.0
   },
-  "underscore_probability": 0.37421884636193836,
-  "numeric_probability": 0.45620741358673567,
-  "uppercase_probability": 0.9575626791262846,
-  "last_updated": "2025-05-05T10:19:24.384672"
+  "underscore_probability": 0.37134544504192407,
+  "numeric_probability": 0.45136909531740477,
+  "uppercase_probability": 0.9592979746135873,
+  "last_updated": "2025-05-05T10:22:00.823306"
 }

@@ -143,6 +143,13 @@ ROBLOX_COOKIES = []
 # Load all cookies with a more flexible approach
 all_cookies = {}
 
+# Base rate limits and dynamic parameters
+COOKIES_PER_SECOND = 5.0     # Each cookie allows this many requests per second at peak
+MIN_DELAY_BASE = 0.2         # Minimum delay between requests with one cookie
+MIN_DELAY_MULTI = 0.05       # Minimum delay with multiple cookies
+MAX_DELAY = 2.0              # Maximum delay between requests (on error)
+INITIAL_DELAY = 0.5          # Initial delay before trying to go faster
+
 # Scan environment variables for all Roblox cookies
 for env_var, value in os.environ.items():
     if env_var.startswith('ROBLOX_COOKIE'):
@@ -150,10 +157,19 @@ for env_var, value in os.environ.items():
             if env_var == 'ROBLOX_COOKIE':
                 index = 0  # Main cookie gets index 0
             else:
-                index = int(env_var[13:])  # Extract number after 'ROBLOX_COOKIE'
+                # Extract number after 'ROBLOX_COOKIE'
+                index_str = env_var[13:]
+                if index_str:
+                    index = int(index_str)
+                else:
+                    logger.warning(f"Invalid cookie variable name format: {env_var}")
+                    continue
             
             # Store cookie with its index for sorting later
-            all_cookies[index] = value
+            if value and len(value) > 50:  # Basic validation
+                all_cookies[index] = value
+            else:
+                logger.warning(f"Skipping cookie {env_var} because it appears invalid (length: {len(value) if value else 0})")
         except ValueError:
             logger.warning(f"Skipping invalid cookie variable: {env_var}")
             continue
@@ -161,14 +177,22 @@ for env_var, value in os.environ.items():
 # Sort cookies by index and add to ROBLOX_COOKIES list
 for index in sorted(all_cookies.keys()):
     cookie = all_cookies[index]
-    if cookie and len(cookie) > 50:  # Basic validation to ensure it's a proper cookie
-        ROBLOX_COOKIES.append(cookie)
-        logger.info(f"Cookie #{index} loaded successfully (length: {len(cookie)})")
-    else:
-        logger.warning(f"Skipping invalid cookie at index {index} (length: {len(cookie) if cookie else 0})")
+    ROBLOX_COOKIES.append(cookie)
+    logger.info(f"Cookie #{index} loaded successfully (length: {len(cookie)})")
 
-# Double-check cookie count for debugging
-if len(ROBLOX_COOKIES) > 0:
+# Calculate dynamic delay based on number of cookies
+cookie_count = len(ROBLOX_COOKIES)
+if cookie_count > 0:
+    # Calculate minimum delay based on cookie count
+    # With more cookies, we can make requests faster
+    dynamic_min_delay = max(MIN_DELAY_MULTI, MIN_DELAY_BASE / cookie_count)
+    logger.info(f"Calculated dynamic minimum delay: {dynamic_min_delay:.3f}s based on {cookie_count} cookies")
+    
+    # Update API endpoint delays based on cookie count
+    for endpoint in API_ENDPOINTS:
+        # Start with a more conservative delay that will be adjusted dynamically
+        endpoint["delay"] = max(dynamic_min_delay, endpoint["delay"] / cookie_count)
+        
     logger.info(f"Successfully loaded {len(ROBLOX_COOKIES)} Roblox cookies for API requests")
 else:
     logger.warning("No valid Roblox cookies found! Operating in unauthenticated mode, which may result in lower success rates.")

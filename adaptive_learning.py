@@ -22,12 +22,14 @@ logger = logging.getLogger('roblox_username_bot')
 
 # Constants
 MIN_SUCCESS_THRESHOLD = 0.05  # 5% minimum success rate before adaptation
-MAX_PARALLEL_CHECKS = 30      # Maximum allowed parallel checks
+MAX_PARALLEL_CHECKS = 50      # Maximum allowed parallel checks
 MIN_PARALLEL_CHECKS = 5       # Minimum allowed parallel checks
 SUCCESS_WINDOW_SIZE = 100     # Number of checks to consider for success rate calculation
 ERROR_THRESHOLD = 5           # Number of consecutive errors before cookie switching
 LEARNING_RATE = 0.1           # How quickly the system adapts (0.0-1.0)
 COOKIE_COOLDOWN = 300         # Time in seconds before a failed cookie is tried again
+BASE_CHECKS_PER_COOKIE = 5    # Base number of checks per cookie
+CHECKS_SCALING_FACTOR = 1.2   # How aggressively to scale checks with more cookies
 LENGTH_DISTRIBUTION = {       # Default distribution of username lengths to try (weighted)
     3: 30.0,                  # Highest weight for 3-character usernames (using floats for type compatibility)
     4: 25.0,
@@ -288,17 +290,48 @@ class AdaptiveLearning:
         
         return self._get_current_params()
     
+    def calculate_dynamic_values(self):
+        """
+        Calculate dynamic values based on the number of available cookies.
+        
+        This method adjusts the parallel checks and other parameters based on 
+        the number of cookies available to maximize the efficiency.
+        
+        Returns:
+            int: The optimal number of parallel checks
+        """
+        cookie_count = len(self.cookies)
+        if cookie_count == 0:
+            # If no cookies, use minimum values
+            return MIN_PARALLEL_CHECKS
+            
+        # Calculate optimal number of parallel checks based on cookie count
+        # More cookies = more parallel checks
+        optimal_checks = int(BASE_CHECKS_PER_COOKIE * cookie_count * CHECKS_SCALING_FACTOR)
+        
+        # Ensure we don't exceed the maximum allowed
+        optimal_checks = min(MAX_PARALLEL_CHECKS, max(MIN_PARALLEL_CHECKS, optimal_checks))
+        
+        # Log the calculation
+        logger.info(f"Calculated optimal parallel checks: {optimal_checks} based on {cookie_count} cookies")
+        
+        return optimal_checks
+    
     def _adapt_parallel_checks(self, success_rate: float):
-        """Adapt the number of parallel checks based on success rate."""
+        """Adapt the number of parallel checks based on success rate and cookie count."""
         try:
+            # Get the base number of checks from cookie count
+            cookie_based_checks = self.calculate_dynamic_values()
+            
             # If success rate is very low, reduce parallelism to avoid wasting API calls
             if success_rate < 0.01:  # Less than 1% success
-                new_parallel = max(int(self.parallel_checks) - 2, int(MIN_PARALLEL_CHECKS))
+                new_parallel = max(int(cookie_based_checks * 0.7), int(MIN_PARALLEL_CHECKS))
             # If success rate is decent and we're not getting errors, increase parallelism
             elif success_rate >= 0.05 and self._error_rate() < 0.1:
-                new_parallel = min(int(self.parallel_checks) + 1, int(MAX_PARALLEL_CHECKS))
+                new_parallel = min(int(cookie_based_checks * 1.2), int(MAX_PARALLEL_CHECKS))
             else:
-                return  # No change needed
+                # Use cookie-based calculation as default
+                new_parallel = cookie_based_checks
                 
             # Apply change with learning rate - ensure all values are numeric
             change = float(new_parallel - int(self.parallel_checks)) * float(LEARNING_RATE)
