@@ -129,19 +129,21 @@ class AdaptiveLearning:
                 with open('adaptive_state.json', 'r') as f:
                     state = json.load(f)
                     
-                # Load saved parameters
+                # Load saved parameters with proper type conversion
                 if 'length_weights' in state:
-                    self.length_weights = state['length_weights']
+                    # Ensure length_weights keys are integers and values are floats
+                    self.length_weights = {int(k): float(v) for k, v in state['length_weights'].items()}
                 if 'parallel_checks' in state:
-                    self.parallel_checks = state['parallel_checks']
+                    self.parallel_checks = int(state['parallel_checks'])
                 if 'pattern_weights' in state:
-                    self.pattern_weights = state['pattern_weights']
+                    # Ensure pattern weights keys are strings
+                    self.pattern_weights = {str(k): float(v) for k, v in state['pattern_weights'].items()}
                 if 'underscore_probability' in state:
-                    self.underscore_probability = state['underscore_probability']
+                    self.underscore_probability = float(state['underscore_probability'])
                 if 'numeric_probability' in state:
-                    self.numeric_probability = state['numeric_probability']
+                    self.numeric_probability = float(state['numeric_probability'])
                 if 'uppercase_probability' in state:
-                    self.uppercase_probability = state['uppercase_probability']
+                    self.uppercase_probability = float(state['uppercase_probability'])
                     
                 logger.info("Loaded adaptive learning state successfully")
         except Exception as e:
@@ -195,7 +197,7 @@ class AdaptiveLearning:
                 self.cookie_status[self.current_cookie_index]['last_used'] = current_time
         
         # Record success by length
-        length = len(username)
+        length = int(len(username))  # Ensure length is always an int
         if length not in self.recent_lengths:
             self.recent_lengths[length] = []
         
@@ -213,10 +215,11 @@ class AdaptiveLearning:
             
             # Update pattern success weights
             for pattern in patterns:
-                if pattern not in self.pattern_weights:
-                    self.pattern_weights[pattern] = 1
+                pattern_key = str(pattern)  # Ensure pattern key is a string
+                if pattern_key not in self.pattern_weights:
+                    self.pattern_weights[pattern_key] = 1.0  # Start with float value
                 else:
-                    self.pattern_weights[pattern] += 1
+                    self.pattern_weights[pattern_key] = float(self.pattern_weights[pattern_key]) + 1.0
     
     def _extract_patterns(self, username: str) -> List[str]:
         """Extract pattern features from a username."""
@@ -245,8 +248,8 @@ class AdaptiveLearning:
         patterns.append(f"has_underscore:{has_underscore}")
         patterns.append(f"has_number:{has_number}")
         
-        # Record length pattern
-        patterns.append(f"length:{len(username)}")
+        # Record length pattern - ensure we use string representation
+        patterns.append(f"length:{str(len(username))}")
         
         return patterns
     
@@ -315,7 +318,10 @@ class AdaptiveLearning:
             # Calculate success rate for each length
             length_success = {}
             
-            for length, checks in self.recent_lengths.items():
+            for length_key, checks in self.recent_lengths.items():
+                # Convert length to int to ensure comparison works properly
+                length = int(length_key) if isinstance(length_key, str) else int(length_key)
+                
                 if len(checks) < 5:  # Skip lengths with too few checks
                     continue
                     
@@ -327,8 +333,8 @@ class AdaptiveLearning:
                 successful = sum(1 for _, available, _ in valid_checks if available)
                 success_rate = successful / total_valid if total_valid > 0 else 0
                 
-                # Ensure length is stored as an int
-                length_success[int(length)] = float(success_rate)
+                # Store with integer key and float value
+                length_success[length] = float(success_rate)
             
             # No data to adapt with
             if not length_success:
@@ -343,10 +349,12 @@ class AdaptiveLearning:
             new_weights = {}
             for length, rate in length_success.items():
                 # We boost the weight of shorter usernames
+                # Make sure length is an integer for comparison
+                length_int = int(length)
                 length_factor = 1.0
-                if int(length) <= 4:
+                if length_int <= 4:
                     length_factor = 3.0  # Triple weight for short usernames
-                elif int(length) <= 6:
+                elif length_int <= 6:
                     length_factor = 1.5  # 50% more weight for medium usernames
                     
                 new_weights[int(length)] = float((rate / total_score) * 100 * length_factor)
@@ -389,18 +397,22 @@ class AdaptiveLearning:
         non_uppercase_success = 0
         
         for pattern, weight in self.pattern_weights.items():
-            if pattern == "has_underscore:True":
-                underscore_success += weight
-            elif pattern == "has_underscore:False":
-                non_underscore_success += weight
-            elif pattern == "has_number:True":
-                numeric_success += weight
-            elif pattern == "has_number:False":
-                non_numeric_success += weight
-            elif pattern.startswith("type:") and "U" in pattern.split(":", 1)[1]:
-                uppercase_success += weight
-            elif pattern.startswith("type:") and "U" not in pattern.split(":", 1)[1]:
-                non_uppercase_success += weight
+            # Ensure we're dealing with string patterns and float weights
+            pattern_str = str(pattern)
+            weight_float = float(weight)
+            
+            if pattern_str == "has_underscore:True":
+                underscore_success += weight_float
+            elif pattern_str == "has_underscore:False":
+                non_underscore_success += weight_float
+            elif pattern_str == "has_number:True":
+                numeric_success += weight_float
+            elif pattern_str == "has_number:False":
+                non_numeric_success += weight_float
+            elif pattern_str.startswith("type:") and "U" in pattern_str.split(":", 1)[1]:
+                uppercase_success += weight_float
+            elif pattern_str.startswith("type:") and "U" not in pattern_str.split(":", 1)[1]:
+                non_uppercase_success += weight_float
         
         # Calculate new probabilities
         if underscore_success + non_underscore_success > 0:
