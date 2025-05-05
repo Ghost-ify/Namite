@@ -196,6 +196,38 @@ from adaptive_learning import AdaptiveLearning
 # Create an instance of the adaptive learning system
 adaptive_system = AdaptiveLearning()
 
+# Function to initialize adaptive learning system with all cookies
+def initialize_with_cookies(cookies_list):
+    global ROBLOX_COOKIES
+    
+    if not cookies_list:
+        logger.warning("No cookies provided to initialize_with_cookies")
+        return
+        
+    # Add cookies to ROBLOX_COOKIES if they don't exist already
+    for cookie in cookies_list:
+        if cookie not in ROBLOX_COOKIES:
+            ROBLOX_COOKIES.append(cookie)
+    
+    # Log the number of cookies
+    if len(ROBLOX_COOKIES) > 0:
+        logger.info(f"roblox_api: Total of {len(ROBLOX_COOKIES)} cookies available")
+    
+    # Force reload cookies in adaptive learning system
+    adaptive_system.cookies = ROBLOX_COOKIES.copy()
+    
+    # Initialize cookie status for each cookie
+    adaptive_system.cookie_status = []
+    for _ in range(len(adaptive_system.cookies)):
+        adaptive_system.cookie_status.append({
+            'last_used': time.time(),
+            'success_count': 0,
+            'error_count': 0,
+            'cooldown_until': 0
+        })
+    
+    logger.info(f"roblox_api: Initialized adaptive learning with {len(adaptive_system.cookies)} cookies")
+
 # Function to get the next cookie in the rotation using adaptive learning
 def get_next_cookie():
     global current_cookie_index

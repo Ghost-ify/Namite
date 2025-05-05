@@ -9,13 +9,13 @@ import random
 import re
 from datetime import datetime
 from username_generator import generate_username, generate_username_with_length, validate_username
-from roblox_api import check_username_availability, get_user_details
+from roblox_api import check_username_availability, get_user_details, initialize_with_cookies
 from database import get_username_status, get_recently_available_usernames
 
 logger = logging.getLogger('roblox_username_bot')
 
 class RobloxUsernameBot:
-    def __init__(self, token, channel_id, check_interval=10):
+    def __init__(self, token, channel_id, check_interval=10, cookies=None):
         """
         Initialize the Roblox Username Discord Bot.
         
@@ -23,10 +23,12 @@ class RobloxUsernameBot:
             token (str): Discord bot token
             channel_id (int): Discord channel ID to post available usernames
             check_interval (int): Time between username checks in seconds
+            cookies (list, optional): List of Roblox cookies to use for API requests
         """
         self.token = token
         self.channel_id = channel_id
         self.check_interval = check_interval
+        self.cookies = cookies or []
         
         # Initialize Discord client with intents
         intents = discord.Intents.default()

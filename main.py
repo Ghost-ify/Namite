@@ -64,27 +64,43 @@ if __name__ == "__main__":
     # Check if ROBLOX_COOKIE or ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc. are set
     roblox_cookies = []
     main_cookie = os.environ.get("ROBLOX_COOKIE", "")
-    if main_cookie:
+    if main_cookie and len(main_cookie) > 50:  # Basic validation
         roblox_cookies.append(main_cookie)
     
     # Check for numbered cookies
     cookie_index = 1
     while True:
-        cookie = os.environ.get(f"ROBLOX_COOKIE{cookie_index}", "")
-        if not cookie:
+        cookie_name = f"ROBLOX_COOKIE{cookie_index}"
+        cookie = os.environ.get(cookie_name, "")
+        if not cookie or len(cookie) < 50:  # Basic validation
+            if cookie:
+                logger.warning(f"Found {cookie_name} but it seems invalid (length: {len(cookie)})")
             break
         roblox_cookies.append(cookie)
         cookie_index += 1
+    
+    # Count all available cookies in environment variables (for verification)
+    cookie_count = 0
+    for key in os.environ:
+        if key.startswith("ROBLOX_COOKIE") and len(os.environ[key]) > 50:
+            cookie_count += 1
+    
+    if cookie_count != len(roblox_cookies):
+        logger.warning(f"Found {cookie_count} cookies in environment but only loaded {len(roblox_cookies)} valid cookies")
     
     if roblox_cookies:
         logger.info(f"Found {len(roblox_cookies)} Roblox cookies, will be used for API requests")
         for i, cookie in enumerate(roblox_cookies):
             logger.info(f"Cookie {i+1} loaded successfully (length: {len(cookie)})")
+    else:
+        logger.warning("No valid Roblox cookies found. Bot will operate in unauthenticated mode with lower success rates.")
     
+    # Initialize the bot with cookies
     bot = RobloxUsernameBot(
         token=discord_token,
         channel_id=channel_id,
-        check_interval=check_interval
+        check_interval=check_interval,
+        cookies=roblox_cookies
     )
     
     try:
