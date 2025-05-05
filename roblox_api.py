@@ -273,11 +273,17 @@ def get_cookies_for_request():
                 total_requests = status['success_count'] + status['error_count']
                 success_rate = status['success_count'] / max(1, total_requests)
                 
-                # Only use cookies with decent success rate (>40%)
-                if success_rate >= 0.4 or total_requests < 10:
-                    available_cookies.append(ROBLOX_COOKIES[i])
+                # Adjust cookie delay based on performance
+                delay_multiplier = 1.0
+                if success_rate < 0.4 and total_requests >= 10:
+                    # Add increasing delay for poor performing cookies
+                    delay_multiplier = 1 + ((0.4 - success_rate) * 10)  # Up to 4x slower
+                    logger.info(f"Cookie {i} slowed down by {delay_multiplier}x due to poor performance")
+                    time.sleep(2 * delay_multiplier)  # Extra delay before using this cookie
+                
+                available_cookies.append(ROBLOX_COOKIES[i])
     
-    # If no cookies passed the success rate check, use all cookies
+    # Use all cookies but with appropriate delays
     if not available_cookies:
         available_cookies = ROBLOX_COOKIES.copy()
     
