@@ -333,11 +333,12 @@ DASHBOARD_HTML = """
                             <h6>Performance Metrics (Last 5 Minutes)</h6>
                             <div class="d-flex justify-content-between">
                                 {% set total_checks = namespace(value=0) %}
+                                {% set total_checks = namespace(value=0) %}
                                 {% for status in stats.cookie_status %}
                                     {% set total_checks.value = total_checks.value + status.success_count|default(0) + status.error_count|default(0) %}
                                 {% endfor %}
-                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(total_checks.value) }}</span></div>
-                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format(total_checks.value / max(1, stats.cookie_count)) }}</span></div>
+                                <div>Total Checks: <span class="badge bg-success">{{ total_checks.value }}</span></div>
+                                <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
                             </div>
                         </div>
                     </div>
