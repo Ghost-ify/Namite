@@ -29,13 +29,13 @@ ERROR_THRESHOLD = 5           # Number of consecutive errors before cookie switc
 LEARNING_RATE = 0.1           # How quickly the system adapts (0.0-1.0)
 COOKIE_COOLDOWN = 300         # Time in seconds before a failed cookie is tried again
 LENGTH_DISTRIBUTION = {       # Default distribution of username lengths to try (weighted)
-    3: 30,                    # Highest weight for 3-character usernames
-    4: 25,
-    5: 20,
-    6: 15,
-    7: 5,
-    8: 3,
-    9: 2
+    3: 30.0,                  # Highest weight for 3-character usernames (using floats for type compatibility)
+    4: 25.0,
+    5: 20.0,
+    6: 15.0,
+    7: 5.0,
+    8: 3.0,
+    9: 2.0
 }
 
 class AdaptiveLearning:
@@ -384,6 +384,15 @@ class AdaptiveLearning:
         errors = sum(1 for _, _, error in self.recent_checks if error)
         return errors / total if total > 0 else 0
     
+    def get_current_params(self) -> Dict:
+        """
+        Get the current parameter settings.
+        
+        Returns:
+            Dict: The current parameters
+        """
+        return self._get_current_params()
+        
     def _get_current_params(self) -> Dict:
         """Get the current parameter settings."""
         return {
@@ -479,9 +488,11 @@ class AdaptiveLearning:
         # Normalize weights to probabilities
         total_weight = sum(self.length_weights.values())
         if total_weight <= 0:
-            return LENGTH_DISTRIBUTION
+            # Convert values to float for type compatibility
+            return {k: float(v) for k, v in LENGTH_DISTRIBUTION.items()}
             
-        return {k: v/total_weight for k, v in self.length_weights.items()}
+        # Convert values to float for type compatibility
+        return {k: float(v)/float(total_weight) for k, v in self.length_weights.items()}
     
     def get_character_probabilities(self) -> Dict[str, float]:
         """
