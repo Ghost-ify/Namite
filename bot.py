@@ -772,8 +772,7 @@ class RobloxUsernameBot:
 
                             # Add statistics
                             success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
-                            embed.add_field(
-                                name="📊 Statistics",
+                            embed.add_fieldname="📊 Statistics",
                                 value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
                                 inline=False
                             )
@@ -953,7 +952,7 @@ class RobloxUsernameBot:
             if username_data['username'] not in seen:
                 seen.add(username_data['username'])
                 unique_usernames.append(username_data)
-        
+
         self.pending_usernames = unique_usernames
 
         # Create a batch embed
