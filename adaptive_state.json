@@ -11,18 +11,18 @@
   "parallel_checks": 10,
   "pattern_weights": {
     "type:ULUULL": 1,
-    "has_underscore:False": 13,
-    "has_number:False": 8,
-    "length:6": 13,
+    "has_underscore:False": 14,
+    "has_number:False": 9,
+    "length:6": 15,
     "type:LNUULL": 1,
-    "has_number:True": 7,
+    "has_number:True": 8,
     "type:LULNUL": 1,
     "type:LUULUL": 1,
     "type:LUULLU": 1,
     "type:LLLULL": 1,
     "type:UU_LNL": 1,
-    "underscore_pos:2": 1,
-    "has_underscore:True": 2,
+    "underscore_pos:2": 2,
+    "has_underscore:True": 3,
     "type:L_LUUL": 1,
     "underscore_pos:1": 1,
     "type:LLULLL": 1,
@@ -32,10 +32,12 @@
     "type:LULUNU": 1,
     "type:UULNLU": 1,
     "type:ULUUUL": 1,
-    "type:NULUL": 1
+    "type:NULUL": 1,
+    "type:ULULLL": 1,
+    "type:LN_ULL": 1
   },
-  "underscore_probability": 0.1586301047619048,
-  "numeric_probability": 0.364313180952381,
-  "uppercase_probability": 0.6811354000000001,
-  "last_updated": "2025-05-05T09:30:53.396745"
+  "underscore_probability": 0.1573874436806723,
+  "numeric_probability": 0.3815275001008404,
+  "uppercase_probability": 0.741719674,
+  "last_updated": "2025-05-05T09:57:45.169425"
 }
