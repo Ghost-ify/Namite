@@ -684,6 +684,32 @@ def dashboard():
     # Get statistics
     stats = get_bot_statistics()
     
+    # Add cookie status if not present
+    if not stats.get('cookie_status'):
+        from roblox_api import adaptive_system
+        if adaptive_system and adaptive_system.cookie_status:
+            current_time = time.time()
+            stats['cookie_status'] = []
+            for i, status in enumerate(adaptive_system.cookie_status):
+                total = status['success_count'] + status['error_count']
+                success_rate = (status['success_count'] / max(1, total)) * 100
+                time_diff = current_time - status['last_used']
+                
+                if time_diff < 60:
+                    last_used_ago = f"{int(time_diff)}s ago"
+                elif time_diff < 3600:
+                    last_used_ago = f"{int(time_diff/60)}m ago"
+                else:
+                    last_used_ago = f"{int(time_diff/3600)}h ago"
+                    
+                stats['cookie_status'].append({
+                    'success_rate': success_rate,
+                    'success_count': status['success_count'],
+                    'error_count': status['error_count'],
+                    'cooldown_until': status['cooldown_until'],
+                    'last_used_ago': last_used_ago
+                })
+    
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
     
