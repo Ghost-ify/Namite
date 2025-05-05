@@ -332,16 +332,15 @@ DASHBOARD_HTML = """
                         <div class="mt-2">
                             <h6>Performance Metrics (Last 5 Minutes)</h6>
                             <div class="d-flex justify-content-between">
-                                {% set total_checks = namespace(value=0) %}
-                                {% set total_checks = namespace(value=0) %}
-                                {% set total_checks = namespace(value=0) %}
+                                {% set total_success = namespace(value=0) %}
+                                {% set total_errors = namespace(value=0) %}
                                 {% for status in stats.cookie_status %}
-                                    {% set success = status.success_count|default(0) %}
-                                    {% set errors = status.error_count|default(0) %}
-                                    {% set total_checks.value = total_checks.value + success + errors %}
+                                    {% set total_success.value = total_success.value + status.success_count|default(0) %}
+                                    {% set total_errors.value = total_errors.value + status.error_count|default(0) %}
                                 {% endfor %}
-                                <div>Checks Last 5m: <span class="badge bg-success">{{ total_checks.value }}</span></div>
-                                <div>Per Minute: <span class="badge bg-primary">{{ (total_checks.value / 5)|round(1) }}</span></div>
+                                {% set total = total_success.value + total_errors.value %}
+                                <div>Checks/Min: <span class="badge bg-success">{{ (total)|round(1) }}</span></div>
+                                <div>Success Rate: <span class="badge bg-primary">{{ ((total_success.value / total * 100) if total > 0 else 0)|round(1) }}%</span></div>
                                 <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
                             </div>
                         </div>
