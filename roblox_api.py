@@ -171,9 +171,23 @@ if USING_AUTH:
 else:
     logger.info("Using anonymous Roblox API requests (no cookies provided)")
     
-# Function to get the next cookie in the rotation
+# Import adaptive learning system
+from adaptive_learning import AdaptiveLearning
+
+# Create an instance of the adaptive learning system
+adaptive_system = AdaptiveLearning()
+
+# Function to get the next cookie in the rotation using adaptive learning
 def get_next_cookie():
     global current_cookie_index
+    
+    # If adaptive learning has cookies, use its selection logic
+    if adaptive_system.cookies:
+        cookie_index, cookie = adaptive_system.get_next_cookie()
+        current_cookie_index = cookie_index  # Update global index to match
+        return cookie
+    
+    # Fall back to original rotation if adaptive system doesn't have cookies
     if not ROBLOX_COOKIES:
         return ""
     
@@ -567,6 +581,8 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
             logger.error(f"{message}: {response_text[:100]}")
             record_username_check(username, False, status_code, message)
             memory_cache[username] = (False, status_code, message, current_time)
+            # Report error to adaptive learning system
+            adaptive_system.record_check(username, False, error=True)
             return False, status_code, message
         
         # Check the status code
@@ -595,9 +611,14 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
             # Store in memory cache
             memory_cache[username] = (is_available, status_code, message, current_time)
             
+            # Record in adaptive learning system
+            adaptive_system.record_check(username, is_available, error=False)
+            
             # If we've had several successes in a row, maybe adjust delays
             if endpoint["success_streak"] >= 10:
                 update_api_delays()
+                # Run adaptive learning
+                adaptive_system.adapt()
             
             return is_available, status_code, message
         else:
