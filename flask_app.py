@@ -401,6 +401,19 @@ DASHBOARD_HTML = """
                         <div class="alert alert-secondary" role="alert">
                             <small>💎 Usernames with 3-4 characters are considered more valuable and will trigger Discord pings.</small>
                         </div>
+                        
+                        <h5>🌈 Chat Color Prediction</h5>
+                        <p>The bot predicts which chat color each username will have in Roblox using the official algorithm from Roblox's <a href="https://github.com/Roblox/Core-Scripts/blob/master/CoreScriptsRoot/Modules/Chat.lua" target="_blank">Core-Scripts repository</a>.</p>
+                        <div class="d-flex flex-wrap">
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🔴</span>Red</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🔵</span>Blue</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟢</span>Green</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟣</span>Purple</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟠</span>Orange</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟡</span>Yellow</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🌸</span>Pink</div>
+                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟤</span>Almond</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -423,9 +436,47 @@ def dashboard():
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
     
-    # Format timestamps for display
+    # Format timestamps for display and calculate chat colors
+    chat_colors = [
+        {"name": "Red", "emoji": "🔴"},
+        {"name": "Blue", "emoji": "🔵"},
+        {"name": "Green", "emoji": "🟢"},
+        {"name": "Purple", "emoji": "🟣"},
+        {"name": "Orange", "emoji": "🟠"},
+        {"name": "Yellow", "emoji": "🟡"},
+        {"name": "Pink", "emoji": "🌸"},
+        {"name": "Almond", "emoji": "🟤"}
+    ]
+    
+    # Function to determine chat color (ported from Roblox source code)
+    def get_chat_color(username):
+        def get_name_value(pName):
+            value = 0
+            for index in range(1, len(pName) + 1):
+                c_value = ord(pName[index - 1])
+                reverse_index = len(pName) - index + 1
+                
+                if len(pName) % 2 == 1:
+                    reverse_index = reverse_index - 1
+                    
+                if reverse_index % 4 >= 2:
+                    c_value = -c_value
+                    
+                value = value + c_value
+            
+            return value
+        
+        # Calculate name value and get color index
+        color_offset = 0
+        name_value = get_name_value(username)
+        color_index = ((name_value + color_offset) % len(chat_colors))
+        
+        return chat_colors[color_index]
+    
     for username in recent_usernames:
         username['checked_at'] = username['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
+        color = get_chat_color(username['username'])
+        username['chat_color'] = f"{color['emoji']} {color['name']}"
     
     # Get generator settings
     min_length = os.environ.get('MIN_LENGTH', '3') 
