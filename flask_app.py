@@ -510,10 +510,22 @@ DASHBOARD_HTML = """
                     <div class="card-body">
                         {% if stats.cookie_status %}
                         <div class="alert alert-info mb-3">
+                            {% set working = namespace(count=0) %}
+                            {% set degraded = namespace(count=0) %}
+                            {% set poor = namespace(count=0) %}
+                            {% for cookie in stats.cookie_status %}
+                                {% if cookie.success_rate >= 80.0 %}
+                                    {% set working.count = working.count + 1 %}
+                                {% elif cookie.success_rate >= 50.0 %}
+                                    {% set degraded.count = degraded.count + 1 %}
+                                {% else %}
+                                    {% set poor.count = poor.count + 1 %}
+                                {% endif %}
+                            {% endfor %}
                             <strong>Cookie Status Summary:</strong><br>
-                            ✅ Working well: {{ stats.cookie_status|selectattr('success_rate', '>=', 80.0)|list|length }} cookies (80%+ success rate)<br>
-                            ⚠️ Degraded: {{ stats.cookie_status|selectattr('success_rate', '>=', 50.0)|selectattr('success_rate', '<', 80.0)|list|length }} cookies (50-80% success rate)<br>
-                            ❌ Poor performance: {{ stats.cookie_status|selectattr('success_rate', '<', 50.0)|list|length }} cookies (<50% success rate)
+                            ✅ Working well: {{ working.count }} cookies (80%+ success rate)<br>
+                            ⚠️ Degraded: {{ degraded.count }} cookies (50-80% success rate)<br>
+                            ❌ Poor performance: {{ poor.count }} cookies (<50% success rate)
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
