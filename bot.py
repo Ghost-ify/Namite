@@ -74,9 +74,9 @@ class RobloxUsernameBot:
         # Import adaptive learning system
         from roblox_api import adaptive_system
 
-        # Get the parallel checks from adaptive learning system (or default 90)
+        # Get the parallel checks from adaptive learning system (or default 150)
         params = adaptive_system.get_current_params()
-        self.parallel_checks = params.get("parallel_checks", 90)
+        self.parallel_checks = params.get("parallel_checks", 150)
 
         # Semaphore to limit concurrent API requests
         self.semaphore = None
