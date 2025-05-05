@@ -335,20 +335,30 @@ class RobloxUsernameBot:
                 await channel.trigger_typing()
                 
                 # Check availability
-                is_available, status_code, response_message = await check_username_availability(username)
-                
-                # Add to results
-                results.append({
-                    'username': username,
-                    'is_available': is_available,
-                    'message': response_message
-                })
-                
-                if is_available:
-                    self.stats['available_found'] += 1
-                
-                # Update total checked
-                self.stats['total_checked'] += 1
+                try:
+                    is_available, status_code, response_message = await check_username_availability(username)
+                    
+                    # Add to results
+                    results.append({
+                        'username': username,
+                        'is_available': is_available,
+                        'message': response_message
+                    })
+                    
+                    if is_available:
+                        self.stats['available_found'] += 1
+                    
+                    # Update total checked
+                    self.stats['total_checked'] += 1
+                    
+                except Exception as api_error:
+                    logger.error(f"API error when checking username '{username}': {str(api_error)}")
+                    # Add to results with error information
+                    results.append({
+                        'username': username,
+                        'is_available': False,
+                        'message': f"API Error: {str(api_error)[:50]}..."
+                    })
                 
             except Exception as e:
                 logger.error(f"Error checking username {username}: {str(e)}")
@@ -358,6 +368,27 @@ class RobloxUsernameBot:
         self.min_length = min_length
         self.max_length = max_length
         logger.info(f"Updated automatic generator settings to length: {min_length}-{max_length}")
+        
+        # Update the adaptive learning system too
+        try:
+            from roblox_api import adaptive_system
+            
+            # Reset the length weights to focus on the new range
+            length_weights = adaptive_system.get_length_distribution()
+            for length in length_weights:
+                # Lower weights for lengths outside our target range
+                if length < min_length or length > max_length:
+                    length_weights[length] = 1.0
+                # Higher weights for our target range
+                else:
+                    length_weights[length] = 30.0 if length >= 5 else 3.0
+                    
+            # Update the adaptive system with our new settings
+            adaptive_system.length_weights = length_weights
+            adaptive_system.save_state()
+            logger.info(f"Updated adaptive learning system with new length weights: {min_length}-{max_length}")
+        except Exception as e:
+            logger.error(f"Failed to update adaptive learning system: {str(e)}")
         
         # Create an embed with the results
         embed = discord.Embed(
