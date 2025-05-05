@@ -7,9 +7,10 @@ import logging
 import discord
 import random
 import re
+import time
 from datetime import datetime
 from username_generator import generate_username, generate_username_with_length, validate_username
-from roblox_api import check_username_availability, get_user_details, initialize_with_cookies
+from roblox_api import check_username_availability, get_user_details, initialize_with_cookies, API_ENDPOINTS
 from database import get_username_status, get_recently_available_usernames
 
 logger = logging.getLogger('roblox_username_bot')
@@ -774,7 +775,7 @@ class RobloxUsernameBot:
                             success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
                             embed.add_field(
                                 name="📊 Statistics",
-                                value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+                                value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({successrate:.2f}%)",
                                 inline=False
                             )
 
