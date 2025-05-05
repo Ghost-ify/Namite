@@ -5,7 +5,7 @@ This provides a web interface to monitor the bot's status and view statistics.
 import os
 import time
 from datetime import datetime, timedelta
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 from dotenv import load_dotenv
 from database import get_db_connection, init_database
 import logging
@@ -332,8 +332,8 @@ DASHBOARD_HTML = """
                         <div class="mt-2">
                             <h6>Performance Metrics (Last 5 Minutes)</h6>
                             <div class="d-flex justify-content-between">
-                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(sum(status.success_count + status.error_count for status in stats.cookie_status) / 5) }}</span></div>
-                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((sum(status.success_count + status.error_count for status in stats.cookie_status) / 5) / max(1, stats.cookie_count)) }}</span></div>
+                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(stats.checks_last_24h / 5) }}</span></div>
+                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((stats.checks_last_24h / 5) / max(1, stats.cookie_count)) }}</span></div>
                             </div>
                         </div>
                     </div>
