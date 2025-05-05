@@ -257,42 +257,36 @@ def initialize_with_cookies(cookies_list):
     logger.info(f"roblox_api: Initialized adaptive learning with {len(adaptive_system.cookies)} cookies")
 
 # Get the next cookie in the rotation using smart load balancing
-def get_next_cookie():
-    global current_cookie_index
-
+def get_cookies_for_request():
+    """Get a list of available cookies for parallel requests."""
     if not ROBLOX_COOKIES:
-        return ""
-
-    if adaptive_system.cookies:
-        # Find the cookie with the best current availability
-        best_index = 0
-        best_score = -1
-        current_time = time.time()
-
+        return [""]  # Return empty cookie if none available
+        
+    current_time = time.time()
+    available_cookies = []
+    
+    if adaptive_system.cookies and adaptive_system.cookie_status:
+        # Get all cookies not in cooldown
         for i, status in enumerate(adaptive_system.cookie_status):
-            # Skip cookies in cooldown
-            if status['cooldown_until'] > current_time:
-                continue
+            if status['cooldown_until'] <= current_time:
+                # Calculate success rate
+                total_requests = status['success_count'] + status['error_count']
+                success_rate = status['success_count'] / max(1, total_requests)
+                
+                # Only use cookies with decent success rate (>40%)
+                if success_rate >= 0.4 or total_requests < 10:
+                    available_cookies.append(ROBLOX_COOKIES[i])
+    
+    # If no cookies passed the success rate check, use all cookies
+    if not available_cookies:
+        available_cookies = ROBLOX_COOKIES.copy()
+    
+    return available_cookies
 
-            # Calculate cookie score based on success rate and last use
-            total_requests = status['success_count'] + status['error_count']
-            success_rate = status['success_count'] / max(1, total_requests)
-            time_since_use = current_time - status['last_used']
-
-            # Score favors successful cookies that haven't been used recently
-            score = success_rate * (1 + min(time_since_use / 10, 1))
-
-            if score > best_score:
-                best_score = score
-                best_index = i
-
-        current_cookie_index = best_index
-        return ROBLOX_COOKIES[best_index]
-
-    # Simple round-robin fallback
-    cookie = ROBLOX_COOKIES[current_cookie_index]
-    current_cookie_index = (current_cookie_index + 1) % len(ROBLOX_COOKIES)
-    return cookie
+def get_next_cookie():
+    """Legacy function kept for compatibility - returns first available cookie"""
+    cookies = get_cookies_for_request()
+    return cookies[0] if cookies else ""
 
 async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple[int, str]:
     """
@@ -329,8 +323,10 @@ async def make_http_request(url: str, params: dict, headers_index: int) -> Tuple
 
     # Add the Roblox cookie if available (for authenticated requests)
     if USING_AUTH and host.endswith("roblox.com"):
-        # Get the next cookie in rotation
-        current_cookie = get_next_cookie()
+        # Get list of available cookies for this request
+        available_cookies = get_cookies_for_request()
+        # Use a random cookie from available ones
+        current_cookie = random.choice(available_cookies)
         headers["Cookie"] = f".ROBLOSECURITY={current_cookie}"
 
         # Add common headers used by Roblox site
