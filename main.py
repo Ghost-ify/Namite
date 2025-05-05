@@ -64,28 +64,35 @@ if __name__ == "__main__":
     # Check for all Roblox cookies (no arbitrary limit)
     roblox_cookies = []
     
-    # First check for the main ROBLOX_COOKIE
-    main_cookie = os.environ.get("ROBLOX_COOKIE", "")
-    if main_cookie and len(main_cookie) > 50:  # Basic validation
-        roblox_cookies.append(main_cookie)
-        logger.info(f"Found valid cookie ROBLOX_COOKIE (length: {len(main_cookie)})")
-    
-    # Then check for all numbered cookies
-    cookie_index = 1
-    while True:
-        cookie_name = f"ROBLOX_COOKIE{cookie_index}"
-        cookie = os.environ.get(cookie_name, "")
-        if not cookie:
-            # No more cookies found with this pattern
-            break
-            
-        if len(cookie) < 50:  # Basic validation
-            logger.warning(f"Found {cookie_name} but it seems invalid (length: {len(cookie)})")
-        else:
-            logger.info(f"Found valid cookie {cookie_name} (length: {len(cookie)})")
-            roblox_cookies.append(cookie)
-            
-        cookie_index += 1
+    # Scan all environment variables for Roblox cookies
+    all_cookies = {}
+    for env_var, value in os.environ.items():
+        if env_var.startswith('ROBLOX_COOKIE'):
+            try:
+                if env_var == 'ROBLOX_COOKIE':
+                    index = 0  # Main cookie gets index 0
+                else:
+                    # Extract number after 'ROBLOX_COOKIE'
+                    index_str = env_var[13:]
+                    if index_str:
+                        index = int(index_str)
+                    else:
+                        logger.warning(f"Invalid cookie variable name format: {env_var}")
+                        continue
+
+                # Store cookie with its index for sorting later
+                if value and len(value) > 50:  # Basic validation
+                    all_cookies[index] = value
+                    logger.info(f"Found valid cookie {env_var} (length: {len(value)})")
+                else:
+                    logger.warning(f"Skipping cookie {env_var} because it appears invalid (length: {len(value) if value else 0})")
+            except ValueError:
+                logger.warning(f"Skipping invalid cookie variable: {env_var}")
+                continue
+
+    # Sort cookies by index and add to list
+    for index in sorted(all_cookies.keys()):
+        roblox_cookies.append(all_cookies[index])
     
     # Count all available cookies in environment variables (for verification)
     cookie_count = 0
