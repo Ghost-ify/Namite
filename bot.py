@@ -373,20 +373,29 @@ class RobloxUsernameBot:
         try:
             from roblox_api import adaptive_system
             
-            # Reset the length weights to focus on the new range
-            length_weights = adaptive_system.get_length_distribution()
-            for length in length_weights:
-                # Lower weights for lengths outside our target range
-                if length < min_length or length > max_length:
-                    length_weights[length] = 1.0
-                # Higher weights for our target range
+            # Create new weights focusing heavily on the specified range
+            new_weights = {}
+            for length in range(3, 21):  # All possible Roblox username lengths
+                if min_length <= length <= max_length:
+                    # Prioritize shorter lengths within the range
+                    if length <= 4:
+                        new_weights[length] = 50.0  # Highest priority for rare short names
+                    elif length <= 6:
+                        new_weights[length] = 30.0  # High priority for medium length
+                    else:
+                        new_weights[length] = 20.0  # Normal priority for longer names
                 else:
-                    length_weights[length] = 30.0 if length >= 5 else 3.0
-                    
+                    new_weights[length] = 1.0  # Very low weight for lengths outside range
+            
             # Update the adaptive system with our new settings
-            adaptive_system.length_weights = length_weights
+            adaptive_system.length_weights = new_weights
             adaptive_system.save_state()
-            logger.info(f"Updated adaptive learning system with new length weights: {min_length}-{max_length}")
+            
+            # Force an immediate adaptation to apply changes
+            adaptive_system.adapt()
+            
+            logger.info(f"Updated adaptive learning system to focus on length range {min_length}-{max_length}")
+            logger.info(f"New weights distribution: {dict(sorted(new_weights.items()))}")
         except Exception as e:
             logger.error(f"Failed to update adaptive learning system: {str(e)}")
         
