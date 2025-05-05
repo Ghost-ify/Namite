@@ -1,8 +1,8 @@
 {
   "length_weights": {
-    "3": 0.0018217694710279514,
-    "4": 0.0016395925239251563,
-    "5": 149.98434413584823,
+    "3": 0.0008713466905073092,
+    "4": 0.0007842120214565782,
+    "5": 149.9925118487094,
     "6": 87.17008561046381,
     "7": 1.0,
     "8": 1.0,
@@ -22,11 +22,11 @@
   "parallel_checks": 6,
   "pattern_weights": {
     "type:ULUULL": 10.0,
-    "has_underscore:False": 957.0,
+    "has_underscore:False": 961.0,
     "has_number:False": 686.0,
     "length:6": 925.0,
     "type:LNUULL": 1.0,
-    "has_number:True": 671.0,
+    "has_number:True": 675.0,
     "type:LULNUL": 2.0,
     "type:LUULUL": 11.0,
     "type:LUULLU": 5.0,
@@ -38,7 +38,7 @@
     "underscore_pos:1": 230.0,
     "type:LLULLL": 4.0,
     "type:UNLNL": 1.0,
-    "length:5": 304.0,
+    "length:5": 308.0,
     "type:UUULLL": 6.0,
     "type:LULUNU": 2.0,
     "type:UULNLU": 1.0,
@@ -242,7 +242,7 @@
     "type:L_UUL": 2.0,
     "type:NLLUU": 3.0,
     "type:UULLN": 1.0,
-    "type:LLNLU": 3.0,
+    "type:LLNLU": 4.0,
     "type:NL_LNL": 2.0,
     "type:NLLNU": 2.0,
     "type:ULLUUU": 5.0,
@@ -479,7 +479,7 @@
     "type:UNLUL": 1.0,
     "type:U_LULU": 2.0,
     "type:NLLUUL": 1.0,
-    "type:ULNUL": 3.0,
+    "type:ULNUL": 4.0,
     "type:LNLLLL": 2.0,
     "type:NLLULU": 1.0,
     "type:ULULUN": 1.0,
@@ -555,7 +555,7 @@
     "type:N_ULLU": 1.0,
     "type:NLLNL": 1.0,
     "type:L_UUN": 1.0,
-    "type:UUNLN": 1.0,
+    "type:UUNLN": 2.0,
     "type:NU_UUL": 1.0,
     "type:UNNULL": 1.0,
     "type:L_LULL": 1.0,
@@ -725,10 +725,11 @@
     "type:NNULN": 1.0,
     "type:ULNUU": 1.0,
     "type:NULLL": 1.0,
-    "type:U_ULL": 1.0
+    "type:U_ULL": 1.0,
+    "type:LUUNL": 1.0
   },
-  "underscore_probability": 0.2943429024028263,
-  "numeric_probability": 0.4918260961113242,
-  "uppercase_probability": 0.9444297772742714,
-  "last_updated": "2025-05-05T14:03:10.269969"
+  "underscore_probability": 0.29425237347882427,
+  "numeric_probability": 0.49374253224497544,
+  "uppercase_probability": 0.9446454830399965,
+  "last_updated": "2025-05-05T14:05:48.255920"
 }
