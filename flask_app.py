@@ -334,10 +334,10 @@ DASHBOARD_HTML = """
                             <div class="d-flex justify-content-between">
                                 {% set total_checks = namespace(value=0) %}
                                 {% for status in stats.cookie_status %}
-                                    {% set total_checks.value = total_checks.value + (status.success_count|default(0) + status.error_count|default(0)) %}
+                                    {% set total_checks.value = total_checks.value + status.success_count|default(0) + status.error_count|default(0) %}
                                 {% endfor %}
-                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(total_checks.value / 5) }}</span></div>
-                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((total_checks.value / 5) / max(1, stats.cookie_count)) }}</span></div>
+                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(checks_last_24h|default(0) / 5) }}</span></div>
+                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((checks_last_24h|default(0) / 5) / max(1, stats.cookie_count)) }}</span></div>
                             </div>
                         </div>
                     </div>
