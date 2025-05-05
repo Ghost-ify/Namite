@@ -329,6 +329,13 @@ DASHBOARD_HTML = """
                             <div>Error Rate: <span class="badge bg-{{ 'success' if (stats.errors_count / stats.total_checked * 100) < 20 else 'warning' if (stats.errors_count / stats.total_checked * 100) < 50 else 'danger' }}">{{ "%.1f"|format(stats.errors_count / stats.total_checked * 100) }}%</span></div>
                             <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
                         </div>
+                        <div class="mt-2">
+                            <h6>Performance Metrics</h6>
+                            <div class="d-flex justify-content-between">
+                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format((stats.total_checked / ((current_time|float - stats.start_time|float) / 60))) }}</span></div>
+                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((stats.total_checked / ((current_time|float - stats.start_time|float) / 60)) / stats.cookie_count) }}</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
