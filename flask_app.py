@@ -106,6 +106,38 @@ def get_bot_statistics():
             elif errors_last_24h > 0:
                 api_status = "Unknown (No Recent Checks)"
             
+            # Get adaptive learning stats
+            adaptive_learning = {}
+            try:
+                # Check if adaptive state file exists
+                if os.path.exists('adaptive_state.json'):
+                    import json
+                    with open('adaptive_state.json', 'r') as f:
+                        state = json.load(f)
+                        
+                    # Get key parameters
+                    adaptive_learning = {
+                        'parallel_checks': state.get('parallel_checks', 10),
+                        'underscore_probability': state.get('underscore_probability', 0.2),
+                        'numeric_probability': state.get('numeric_probability', 0.3),
+                        'uppercase_probability': state.get('uppercase_probability', 0.4),
+                        'length_weights': state.get('length_weights', {}),
+                        'last_updated': state.get('last_updated', 'Unknown')
+                    }
+                    
+                    # Calculate normalized length distribution
+                    length_weights = adaptive_learning.get('length_weights', {})
+                    if length_weights:
+                        total_weight = sum(float(v) for v in length_weights.values())
+                        if total_weight > 0:
+                            adaptive_learning['length_distribution'] = {
+                                k: round(float(v)/total_weight * 100, 1) 
+                                for k, v in length_weights.items()
+                            }
+            except Exception as e:
+                app.logger.error(f"Error loading adaptive learning state: {str(e)}")
+                adaptive_learning = {'error': str(e)}
+            
             return {
                 "total_checked": total_checked,
                 "available_found": available_found,
@@ -115,7 +147,8 @@ def get_bot_statistics():
                 "errors_last_24h": errors_last_24h,
                 "success_rate": success_rate,
                 "success_rate_24h": success_rate_24h,
-                "api_status": api_status
+                "api_status": api_status,
+                "adaptive_learning": adaptive_learning
             }
         finally:
             conn.close()
@@ -351,6 +384,58 @@ DASHBOARD_HTML = """
                         </div>
                         
                         <div class="text-muted small mb-2">* Success rate excludes error responses from calculations.</div>
+                        
+                        {% if stats.adaptive_learning %}
+                        <h5>Adaptive Learning System</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="d-flex flex-wrap">
+                                    <div class="text-center p-2 border rounded me-2 mb-2" style="min-width: 125px;">
+                                        <div class="stats-number">{{ stats.adaptive_learning.parallel_checks }}</div>
+                                        <div class="stats-label">Parallel Checks</div>
+                                    </div>
+                                    <div class="text-center p-2 border rounded me-2 mb-2" style="min-width: 125px;">
+                                        <div class="stats-number">{{ "%.1f"|format(stats.adaptive_learning.underscore_probability * 100) }}%</div>
+                                        <div class="stats-label">Underscore Prob.</div>
+                                    </div>
+                                    <div class="text-center p-2 border rounded me-2 mb-2" style="min-width: 125px;">
+                                        <div class="stats-number">{{ "%.1f"|format(stats.adaptive_learning.numeric_probability * 100) }}%</div>
+                                        <div class="stats-label">Number Prob.</div>
+                                    </div>
+                                    <div class="text-center p-2 border rounded mb-2" style="min-width: 125px;">
+                                        <div class="stats-number">{{ "%.1f"|format(stats.adaptive_learning.uppercase_probability * 100) }}%</div>
+                                        <div class="stats-label">Uppercase Prob.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if stats.adaptive_learning.length_distribution %}
+                        <div class="card mb-3">
+                            <div class="card-header py-2">
+                                <h6 class="mb-0">Username Length Distribution</h6>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="progress mb-2" style="height: 25px;">
+                                    {% for length, percentage in stats.adaptive_learning.length_distribution.items()|sort %}
+                                    <div class="progress-bar bg-{{ ['success', 'info', 'primary', 'warning', 'danger', 'secondary']|random }}" 
+                                         role="progressbar" 
+                                         style="width: {{ percentage }}%" 
+                                         aria-valuenow="{{ percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"
+                                         title="Length {{ length }}: {{ percentage }}%">
+                                        {{ length }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="small text-muted">
+                                    Last updated: {{ stats.adaptive_learning.last_updated|default('Unknown') }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
                         
                         <h5>24-Hour Activity</h5>
                         <div class="d-flex justify-content-between align-items-center mb-3">
