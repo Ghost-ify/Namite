@@ -144,11 +144,11 @@ ROBLOX_COOKIES = []
 all_cookies = {}
 
 # Base rate limits and dynamic parameters
-COOKIES_PER_SECOND = 1.5     # Each cookie allows 90 requests per minute (1.5 per second)
-MIN_DELAY_BASE = 0.03        # Minimum delay between requests with one cookie
-MIN_DELAY_MULTI = 0.01       # Minimum delay with multiple cookies
-MAX_DELAY = 0.7             # Maximum delay between requests (on error)
-INITIAL_DELAY = 0.1         # Initial delay before trying to go faster
+COOKIES_PER_SECOND = 1.33    # Each cookie allows ~80 requests per minute
+MIN_DELAY_BASE = 0.75        # Minimum delay between requests with one cookie
+MIN_DELAY_MULTI = 0.75       # Minimum delay with multiple cookies
+MAX_DELAY = 0.75            # Maximum delay between requests (on error)
+INITIAL_DELAY = 0.75        # Initial delay before trying to go faster
 
 # Scan environment variables for all Roblox cookies
 for env_var, value in os.environ.items():
