@@ -57,7 +57,9 @@ The bot predicts which chat color each username would have in Roblox's chat syst
 
 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond
 
-For example, "ROBLOX" has an Orange chat color. If you change one letter to the next in the alphabet, the color shifts by one in the sequence.
+The bot implements the exact same algorithm used by Roblox, which calculates a unique value for each username based on character positions and string length. This ensures that the predicted colors match what users will see in-game.
+
+For example, "ROBLOX" has an Orange chat color. The algorithm considers factors like character position, odd/even string length, and character values to determine the final color.
 
 ## Notes for Channel Administrators
 

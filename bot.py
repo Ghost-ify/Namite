@@ -412,7 +412,7 @@ class RobloxUsernameBot:
         embed.add_field(
             name="🌈 Chat Color Prediction",
             value=(
-                "Usernames display with their predicted Roblox chat color:\n"
+                "Usernames display with their exact Roblox chat color using the official game algorithm:\n"
                 "🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond"
             ),
             inline=False
@@ -603,7 +603,7 @@ class RobloxUsernameBot:
         
         embed.add_field(
             name="🌈 Chat Color Prediction",
-            value="• Displays predicted Roblox chat color for each username\n• Colors cycle: 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond",
+            value="• Displays exact Roblox chat colors using the official game algorithm\n• Colors cycle: 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond",
             inline=False
         )
         
@@ -711,20 +711,36 @@ class RobloxUsernameBot:
         Determine the Roblox chat color for a username.
         Colors cycle in this order: Red, Blue, Green, Purple, Orange, Yellow, Pink, Almond
         
+        This implementation is based on the actual Roblox color algorithm.
+        
         Args:
             username (str): The Roblox username to analyze
             
         Returns:
             dict: Dictionary with color name and emoji
         """
-        # Calculate color index based on the sum of character values
-        # This is a simplified algorithm to match Roblox's color system
-        total = 0
-        for char in username:
-            total += ord(char)
+        # Implementation based on actual Roblox code
+        def get_name_value(name):
+            value = 0
+            for index in range(1, len(name) + 1):
+                c_value = ord(name[index - 1])
+                reverse_index = len(name) - index + 1
+                
+                if len(name) % 2 == 1:
+                    reverse_index = reverse_index - 1
+                    
+                if reverse_index % 4 >= 2:
+                    c_value = -c_value
+                    
+                value = value + c_value
+            
+            return value
         
-        # Get color index (0-7 for the 8 colors)
-        color_index = total % 8
+        # Calculate name value and get color index
+        name_value = get_name_value(username)
+        color_offset = 0
+        color_index = ((name_value + color_offset) % len(self.chat_colors))
+        
         return self.chat_colors[color_index]
     
     def run(self):
