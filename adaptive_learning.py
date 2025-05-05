@@ -67,21 +67,33 @@ class AdaptiveLearning:
         
     def _load_cookies(self):
         """Load all available Roblox cookies from environment variables."""
-        # Load the main cookie
-        main_cookie = os.environ.get('ROBLOX_COOKIE')
-        if main_cookie:
-            self.cookies.append(main_cookie)
-            self.cookie_status.append({
-                'last_used': time.time(),
-                'success_count': 0,
-                'error_count': 0,
-                'cooldown_until': 0
-            })
-            
-        # Load numbered cookies (ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc.)
-        for i in range(1, 10):  # Check for up to 10 additional cookies
-            cookie = os.environ.get(f'ROBLOX_COOKIE{i}')
-            if cookie:
+        # Load cookies from environment variables starting with ROBLOX_COOKIE
+        all_cookies = {}
+        cookie_count = 0
+        
+        # Get all environment variables
+        for env_var, value in os.environ.items():
+            # Check if this is a Roblox cookie environment variable
+            if env_var.startswith('ROBLOX_COOKIE'):
+                # Extract the cookie index if it has one (e.g., ROBLOX_COOKIE1 → 1)
+                try:
+                    if env_var == 'ROBLOX_COOKIE':
+                        index = 0  # Main cookie gets index 0
+                    else:
+                        index = int(env_var[13:])  # Extract number after 'ROBLOX_COOKIE'
+                    
+                    # Store the cookie with its index
+                    all_cookies[index] = value
+                    cookie_count += 1
+                except ValueError:
+                    # If the environment variable doesn't follow the expected format, skip it
+                    logger.warning(f"Skipping invalid cookie variable: {env_var}")
+                    continue
+        
+        # Sort cookies by their index and add them to the self.cookies list
+        for index in sorted(all_cookies.keys()):
+            cookie = all_cookies[index]
+            if cookie and len(cookie) > 50:  # Basic validation to ensure it's a proper cookie
                 self.cookies.append(cookie)
                 self.cookie_status.append({
                     'last_used': time.time(),
@@ -89,6 +101,9 @@ class AdaptiveLearning:
                     'error_count': 0,
                     'cooldown_until': 0
                 })
+                logger.info(f"Loaded Roblox cookie #{index} (length: {len(cookie)})")
+            else:
+                logger.warning(f"Skipping invalid cookie at index {index} (length: {len(cookie) if cookie else 0})")
         
         logger.info(f"Loaded {len(self.cookies)} cookies for adaptive rotation")
         

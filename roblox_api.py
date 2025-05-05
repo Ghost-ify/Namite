@@ -140,19 +140,32 @@ import ssl
 # Get all Roblox cookies from environment variables
 ROBLOX_COOKIES = []
 
-# First check the main cookie
-main_cookie = os.environ.get("ROBLOX_COOKIE", "")
-if main_cookie:
-    ROBLOX_COOKIES.append(main_cookie)
+# Load all cookies with a more flexible approach
+all_cookies = {}
 
-# Then check for numbered cookies (ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc.)
-index = 1
-while True:
-    cookie = os.environ.get(f"ROBLOX_COOKIE{index}", "")
-    if not cookie:
-        break
-    ROBLOX_COOKIES.append(cookie)
-    index += 1
+# Scan environment variables for all Roblox cookies
+for env_var, value in os.environ.items():
+    if env_var.startswith('ROBLOX_COOKIE'):
+        try:
+            if env_var == 'ROBLOX_COOKIE':
+                index = 0  # Main cookie gets index 0
+            else:
+                index = int(env_var[13:])  # Extract number after 'ROBLOX_COOKIE'
+            
+            # Store cookie with its index for sorting later
+            all_cookies[index] = value
+        except ValueError:
+            logger.warning(f"Skipping invalid cookie variable: {env_var}")
+            continue
+
+# Sort cookies by index and add to ROBLOX_COOKIES list
+for index in sorted(all_cookies.keys()):
+    cookie = all_cookies[index]
+    if cookie and len(cookie) > 50:  # Basic validation to ensure it's a proper cookie
+        ROBLOX_COOKIES.append(cookie)
+        logger.info(f"Cookie #{index} loaded successfully (length: {len(cookie)})")
+    else:
+        logger.warning(f"Skipping invalid cookie at index {index} (length: {len(cookie) if cookie else 0})")
 
 # Flag to track if we're using authenticated requests
 USING_AUTH = len(ROBLOX_COOKIES) > 0
