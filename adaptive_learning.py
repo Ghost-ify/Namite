@@ -272,79 +272,91 @@ class AdaptiveLearning:
     
     def _adapt_parallel_checks(self, success_rate: float):
         """Adapt the number of parallel checks based on success rate."""
-        # If success rate is very low, reduce parallelism to avoid wasting API calls
-        if success_rate < 0.01:  # Less than 1% success
-            new_parallel = max(self.parallel_checks - 2, MIN_PARALLEL_CHECKS)
-        # If success rate is decent and we're not getting errors, increase parallelism
-        elif success_rate >= 0.05 and self._error_rate() < 0.1:
-            new_parallel = min(self.parallel_checks + 1, MAX_PARALLEL_CHECKS)
-        else:
-            return  # No change needed
+        try:
+            # If success rate is very low, reduce parallelism to avoid wasting API calls
+            if success_rate < 0.01:  # Less than 1% success
+                new_parallel = max(int(self.parallel_checks) - 2, int(MIN_PARALLEL_CHECKS))
+            # If success rate is decent and we're not getting errors, increase parallelism
+            elif success_rate >= 0.05 and self._error_rate() < 0.1:
+                new_parallel = min(int(self.parallel_checks) + 1, int(MAX_PARALLEL_CHECKS))
+            else:
+                return  # No change needed
+                
+            # Apply change with learning rate - ensure all values are numeric
+            change = float(new_parallel - int(self.parallel_checks)) * float(LEARNING_RATE)
+            self.parallel_checks = max(int(MIN_PARALLEL_CHECKS), 
+                                      min(int(MAX_PARALLEL_CHECKS), 
+                                          int(self.parallel_checks + change)))
             
-        # Apply change with learning rate
-        change = (new_parallel - self.parallel_checks) * LEARNING_RATE
-        self.parallel_checks = max(MIN_PARALLEL_CHECKS, 
-                                  min(MAX_PARALLEL_CHECKS, 
-                                      int(self.parallel_checks + change)))
-        
-        logger.info(f"Adapted parallel checks to {self.parallel_checks}")
+            logger.info(f"Adapted parallel checks to {self.parallel_checks}")
+        except Exception as e:
+            # If any errors occur during adaptation, fallback to a safe value
+            logger.error(f"Error in parallel checks adaptation: {str(e)}")
+            self.parallel_checks = 10
     
     def _adapt_length_weights(self):
         """Adapt the weights for different username lengths based on success rates."""
-        # Calculate success rate for each length
-        length_success = {}
-        
-        for length, checks in self.recent_lengths.items():
-            if len(checks) < 5:  # Skip lengths with too few checks
-                continue
-                
-            valid_checks = [(t, a, e) for t, a, e in checks if not e]
-            if not valid_checks:
-                continue
-                
-            total_valid = len(valid_checks)
-            successful = sum(1 for _, available, _ in valid_checks if available)
-            success_rate = successful / total_valid if total_valid > 0 else 0
+        try:
+            # Calculate success rate for each length
+            length_success = {}
             
-            length_success[length] = success_rate
-        
-        # No data to adapt with
-        if not length_success:
-            return
+            for length, checks in self.recent_lengths.items():
+                if len(checks) < 5:  # Skip lengths with too few checks
+                    continue
+                    
+                valid_checks = [(t, a, e) for t, a, e in checks if not e]
+                if not valid_checks:
+                    continue
+                    
+                total_valid = len(valid_checks)
+                successful = sum(1 for _, available, _ in valid_checks if available)
+                success_rate = successful / total_valid if total_valid > 0 else 0
+                
+                # Ensure length is stored as an int
+                length_success[int(length)] = float(success_rate)
             
-        # Get total success score to normalize
-        total_score = sum(rate for rate in length_success.values())
-        if total_score <= 0:
-            return
+            # No data to adapt with
+            if not length_success:
+                return
+                
+            # Get total success score to normalize
+            total_score = sum(rate for rate in length_success.values())
+            if total_score <= 0:
+                return
+                
+            # Create new normalized weights
+            new_weights = {}
+            for length, rate in length_success.items():
+                # We boost the weight of shorter usernames
+                length_factor = 1.0
+                if int(length) <= 4:
+                    length_factor = 3.0  # Triple weight for short usernames
+                elif int(length) <= 6:
+                    length_factor = 1.5  # 50% more weight for medium usernames
+                    
+                new_weights[int(length)] = float((rate / total_score) * 100 * length_factor)
             
-        # Create new normalized weights
-        new_weights = {}
-        for length, rate in length_success.items():
-            # We boost the weight of shorter usernames
-            length_factor = 1.0
-            if length <= 4:
-                length_factor = 3.0  # Triple weight for short usernames
-            elif length <= 6:
-                length_factor = 1.5  # 50% more weight for medium usernames
-                
-            new_weights[length] = (rate / total_score) * 100 * length_factor
-        
-        # Blend with current weights using learning rate
-        for length, weight in new_weights.items():
-            if length in self.length_weights:
-                self.length_weights[length] = (
-                    (1 - LEARNING_RATE) * self.length_weights[length] + 
-                    LEARNING_RATE * weight
-                )
-            else:
-                self.length_weights[length] = weight
-                
-        # Add any missing lengths from default distribution
-        for length, weight in LENGTH_DISTRIBUTION.items():
-            if length not in self.length_weights:
-                self.length_weights[length] = weight
-                
-        logger.info(f"Adapted length weights: {dict(sorted(self.length_weights.items()))}")
+            # Blend with current weights using learning rate
+            for length, weight in new_weights.items():
+                length = int(length)  # Ensure key is an integer
+                if length in self.length_weights:
+                    self.length_weights[length] = float(
+                        (1 - float(LEARNING_RATE)) * float(self.length_weights[length]) + 
+                        float(LEARNING_RATE) * float(weight)
+                    )
+                else:
+                    self.length_weights[length] = float(weight)
+                    
+            # Add any missing lengths from default distribution
+            for length, weight in LENGTH_DISTRIBUTION.items():
+                length = int(length)  # Ensure key is an integer
+                if length not in self.length_weights:
+                    self.length_weights[length] = float(weight)
+                    
+            logger.info(f"Adapted length weights: {dict(sorted(self.length_weights.items()))}")
+        except Exception as e:
+            # If any errors occur during adaptation, log them
+            logger.error(f"Error in length weights adaptation: {str(e)}")
     
     def _adapt_character_probabilities(self):
         """Adapt character type probabilities based on successful patterns."""
