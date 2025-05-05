@@ -1,8 +1,8 @@
 {
   "length_weights": {
-    "3": 1.057170702641822e-11,
-    "4": 1.3051490156071878e-11,
-    "5": 149.99999999994046,
+    "3": 8.56308269139876e-12,
+    "4": 1.057170702641822e-11,
+    "5": 149.9999999999518,
     "6": 87.17008561046381,
     "7": 1.0,
     "8": 1.0,
@@ -22,11 +22,11 @@
   "parallel_checks": 6,
   "pattern_weights": {
     "type:ULUULL": 10.0,
-    "has_underscore:False": 1033.0,
+    "has_underscore:False": 1034.0,
     "has_number:False": 693.0,
     "length:6": 925.0,
     "type:LNUULL": 1.0,
-    "has_number:True": 801.0,
+    "has_number:True": 802.0,
     "type:LULNUL": 2.0,
     "type:LUULUL": 11.0,
     "type:LUULLU": 5.0,
@@ -38,7 +38,7 @@
     "underscore_pos:1": 265.0,
     "type:LLULLL": 4.0,
     "type:UNLNL": 2.0,
-    "length:5": 441.0,
+    "length:5": 442.0,
     "type:UUULLL": 6.0,
     "type:LULUNU": 2.0,
     "type:UULNLU": 1.0,
@@ -650,7 +650,7 @@
     "type:L_NLLU": 1.0,
     "type:LL_ULN": 1.0,
     "type:UL_LUU": 1.0,
-    "type:LNULL": 1.0,
+    "type:LNULL": 2.0,
     "type:N_NNLU": 1.0,
     "type:LU_UNL": 1.0,
     "type:NULUU": 4.0,
@@ -770,8 +770,8 @@
     "type:NL_LN": 1.0,
     "type:UL_LN": 1.0
   },
-  "underscore_probability": 0.3069740110034332,
-  "numeric_probability": 0.5330111580610992,
-  "uppercase_probability": 0.9452704516497508,
-  "last_updated": "2025-05-05T15:25:13.996918"
+  "underscore_probability": 0.3072561536514681,
+  "numeric_probability": 0.5336375350275159,
+  "uppercase_probability": 0.9452443569673777,
+  "last_updated": "2025-05-05T15:25:51.552845"
 }
