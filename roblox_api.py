@@ -183,16 +183,15 @@ for index in sorted(all_cookies.keys()):
 # Calculate dynamic delay based on number of cookies
 cookie_count = len(ROBLOX_COOKIES)
 if cookie_count > 0:
-    # Calculate minimum delay with exponential scaling
-    # More cookies = exponentially faster, but with a safe minimum
-    scaling_factor = 1 / (1 + math.log(cookie_count + 1))  # Logarithmic scaling
-    dynamic_min_delay = max(MIN_DELAY_MULTI, MIN_DELAY_BASE * scaling_factor)
+    # Calculate dynamic delay to achieve 90 requests/minute per cookie
+    dynamic_min_delay = MIN_DELAY_BASE / cookie_count  # Distribute load across cookies
+    dynamic_min_delay = max(MIN_DELAY_MULTI, dynamic_min_delay)  # Don't go too fast
     logger.info(f"Calculated dynamic minimum delay: {dynamic_min_delay:.3f}s based on {cookie_count} cookies")
 
     # Update API endpoint delays based on cookie count and performance
     for endpoint in API_ENDPOINTS:
         # Scale delay based on cookie count but maintain minimum safety threshold
-        base_delay = endpoint["delay"] * scaling_factor
+        base_delay = endpoint["delay"] * (1 / (1 + math.log(cookie_count + 1)))
         success_bonus = 0.9 if endpoint["success_streak"] > 5 else 1.0
         endpoint["delay"] = max(dynamic_min_delay, base_delay * success_bonus)
         logger.info(f"Endpoint {endpoint['name']} delay set to {endpoint['delay']:.3f}s")
@@ -261,10 +260,10 @@ def get_cookies_for_request():
     """Get a list of available cookies for parallel requests."""
     if not ROBLOX_COOKIES:
         return [""]  # Return empty cookie if none available
-        
+
     current_time = time.time()
     available_cookies = []
-    
+
     if adaptive_system.cookies and adaptive_system.cookie_status:
         # Get all cookies not in cooldown
         for i, status in enumerate(adaptive_system.cookie_status):
@@ -272,7 +271,7 @@ def get_cookies_for_request():
                 # Calculate success rate
                 total_requests = status['success_count'] + status['error_count']
                 success_rate = status['success_count'] / max(1, total_requests)
-                
+
                 # Adjust cookie delay based on performance
                 delay_multiplier = 1.0
                 if success_rate < 0.4 and total_requests >= 10:
@@ -280,13 +279,13 @@ def get_cookies_for_request():
                     delay_multiplier = 1 + ((0.4 - success_rate) * 10)  # Up to 4x slower
                     logger.info(f"Cookie {i} slowed down by {delay_multiplier}x due to poor performance")
                     time.sleep(2 * delay_multiplier)  # Extra delay before using this cookie
-                
+
                 available_cookies.append(ROBLOX_COOKIES[i])
-    
+
     # Use all cookies but with appropriate delays
     if not available_cookies:
         available_cookies = ROBLOX_COOKIES.copy()
-    
+
     return available_cookies
 
 def get_next_cookie():
