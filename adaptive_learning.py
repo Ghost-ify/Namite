@@ -50,6 +50,7 @@ class AdaptiveLearning:
         
         # Current parameters
         self.parallel_checks = 10
+        self.check_interval = 0.1  # Default interval between checks in seconds
         # Ensure all length weights are stored as integers->floats
         self.length_weights = {int(k): float(v) for k, v in LENGTH_DISTRIBUTION.items()}
         self.pattern_weights = {}  # Will be populated as patterns emerge
