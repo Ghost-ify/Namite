@@ -777,8 +777,8 @@
     "type:NL_LL": 1.0,
     "type:LUNLU": 1.0
   },
-  "underscore_probability": 0.31324523718382036,
-  "numeric_probability": 0.5466632565477975,
-  "uppercase_probability": 0.9454506743890121,
-  "last_updated": "2025-05-05T15:59:47.903470"
+  "underscore_probability": 0.31375011452453727,
+  "numeric_probability": 0.5471183312356558,
+  "uppercase_probability": 0.9455021792620991,
+  "last_updated": "2025-05-05T16:03:26.907336"
 }
