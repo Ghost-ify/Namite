@@ -29,6 +29,7 @@ def get_bot_statistics():
         # Get cookie information from roblox_api
         from roblox_api import adaptive_system
         current_time = time.time()
+        start_time = time.time() # Added start time initialization
 
         cookie_status = []
         if adaptive_system and adaptive_system.cookie_status:
@@ -67,7 +68,8 @@ def get_bot_statistics():
                 "api_status": "Unknown",
                 "cookie_count": len(cookie_status),
                 "cookie_status": cookie_status,
-                "current_time": current_time
+                "current_time": current_time,
+                "start_time": start_time # Added start_time to the dictionary
             }
 
         cursor = conn.cursor()
@@ -170,7 +172,8 @@ def get_bot_statistics():
                 "adaptive_learning": adaptive_learning,
                 "cookie_count": len(cookie_status),
                 "cookie_status": cookie_status,
-                "current_time": current_time
+                "current_time": current_time,
+                "start_time": start_time # Added start_time to the dictionary
             }
         finally:
             conn.close()
