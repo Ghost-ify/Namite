@@ -1,8 +1,8 @@
 {
   "length_weights": {
-    "3": 0.007963395544259908,
-    "4": 0.007963395544259908,
-    "5": 149.91551163745555,
+    "3": 0.004702305434930033,
+    "4": 0.004702305434930033,
+    "5": 149.95011046680114,
     "6": 87.17008561046381,
     "7": 1.0,
     "8": 1.0,
@@ -22,11 +22,11 @@
   "parallel_checks": 6,
   "pattern_weights": {
     "type:ULUULL": 10.0,
-    "has_underscore:False": 945.0,
+    "has_underscore:False": 949.0,
     "has_number:False": 685.0,
     "length:6": 925.0,
     "type:LNUULL": 1.0,
-    "has_number:True": 656.0,
+    "has_number:True": 660.0,
     "type:LULNUL": 2.0,
     "type:LUULUL": 11.0,
     "type:LUULLU": 5.0,
@@ -38,7 +38,7 @@
     "underscore_pos:1": 229.0,
     "type:LLULLL": 4.0,
     "type:UNLNL": 1.0,
-    "length:5": 288.0,
+    "length:5": 292.0,
     "type:UUULLL": 6.0,
     "type:LULUNU": 2.0,
     "type:UULNLU": 1.0,
@@ -280,7 +280,7 @@
     "type:LNNUU": 1.0,
     "type:N_NUNL": 1.0,
     "type:L_LNL": 5.0,
-    "type:NLULN": 1.0,
+    "type:NLULN": 2.0,
     "type:LNNULL": 1.0,
     "type:U_NLUU": 2.0,
     "type:UNULUU": 1.0,
@@ -614,7 +614,7 @@
     "type:NLUUUL": 1.0,
     "type:ULULLU": 5.0,
     "type:NNUNU": 1.0,
-    "type:NULLU": 1.0,
+    "type:NULLU": 2.0,
     "type:L_UUNU": 1.0,
     "type:NNUUUU": 1.0,
     "type:UN_UNN": 1.0,
@@ -720,10 +720,12 @@
     "type:UN_LL": 1.0,
     "type:UNUNL": 1.0,
     "type:ULNNL": 1.0,
-    "type:N_LNL": 1.0
+    "type:N_LNL": 1.0,
+    "type:UNNLU": 1.0,
+    "type:NNULN": 1.0
   },
-  "underscore_probability": 0.29532810569514234,
-  "numeric_probability": 0.48831067805390543,
-  "uppercase_probability": 0.9444789036579977,
-  "last_updated": "2025-05-05T13:55:11.581447"
+  "underscore_probability": 0.295011634325153,
+  "numeric_probability": 0.4893673845117058,
+  "uppercase_probability": 0.9442863012202714,
+  "last_updated": "2025-05-05T13:58:17.353134"
 }
