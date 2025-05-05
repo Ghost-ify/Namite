@@ -30,6 +30,11 @@ class RobloxUsernameBot:
         self.check_interval = check_interval
         self.cookies = cookies or []
         
+        # Initialize the Roblox API with cookies if they exist
+        if self.cookies:
+            logger.info(f"Initializing Roblox API with {len(self.cookies)} cookies from bot")
+            initialize_with_cookies(self.cookies)
+        
         # Initialize Discord client with intents
         intents = discord.Intents.default()
         # Try to enable message_content intent (for commands)

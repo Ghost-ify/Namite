@@ -48,7 +48,8 @@ class AdaptiveLearning:
         
         # Current parameters
         self.parallel_checks = 10
-        self.length_weights = LENGTH_DISTRIBUTION.copy()
+        # Ensure all length weights are stored as integers->floats
+        self.length_weights = {int(k): float(v) for k, v in LENGTH_DISTRIBUTION.items()}
         self.pattern_weights = {}  # Will be populated as patterns emerge
         self.underscore_probability = 0.2
         self.numeric_probability = 0.3
@@ -363,9 +364,10 @@ class AdaptiveLearning:
                     
             # Add any missing lengths from default distribution
             for length, weight in LENGTH_DISTRIBUTION.items():
-                length = int(length)  # Ensure key is an integer
-                if length not in self.length_weights:
-                    self.length_weights[length] = float(weight)
+                length_key = int(length)  # Ensure key is an integer
+                weight_value = float(weight)  # Ensure value is a float
+                if length_key not in self.length_weights:
+                    self.length_weights[length_key] = weight_value
                     
             logger.info(f"Adapted length weights: {dict(sorted(self.length_weights.items()))}")
         except Exception as e:
