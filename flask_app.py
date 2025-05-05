@@ -229,21 +229,24 @@ DASHBOARD_HTML = """
             document.body.removeChild(input);
             
             // Visual feedback
-            const elements = document.querySelectorAll('span[onclick="copyToClipboard(\'' + text + '\')"]');
+            // Using a safer approach for selector to avoid issues with special characters
+            const elements = document.querySelectorAll('span[title="Click to copy"]');
             elements.forEach(element => {
-                element.classList.add('copy-success');
-                setTimeout(() => {
-                    element.classList.remove('copy-success');
-                }, 1000);
-                
-                // Change icon temporarily
-                const icon = element.querySelector('.copy-icon');
-                if (icon) {
-                    const originalText = icon.innerHTML;
-                    icon.innerHTML = '✅';
+                if (element.textContent.trim().includes(text)) {
+                    element.classList.add('copy-success');
                     setTimeout(() => {
-                        icon.innerHTML = originalText;
+                        element.classList.remove('copy-success');
                     }, 1000);
+                    
+                    // Change icon temporarily
+                    const icon = element.querySelector('.copy-icon');
+                    if (icon) {
+                        const originalText = icon.innerHTML;
+                        icon.innerHTML = '✅';
+                        setTimeout(() => {
+                            icon.innerHTML = originalText;
+                        }, 1000);
+                    }
                 }
             });
         }

@@ -691,10 +691,11 @@ class RobloxUsernameBot:
             length = username_data['length']
             has_underscore = username_data['has_underscore']
             
-            # Add formatting with chat color
+            # Add formatting with chat color - optimized for easy copying
             chat_color = self.get_chat_color(username)
             special_marker = "🔹" if has_underscore else "🔸"
-            username_list += f"{special_marker} **{username}** {chat_color['emoji']} (Length: {length}, Color: {chat_color['name']}{', Has underscore' if has_underscore else ''})\n"
+            # Make username stand out with code block for easy copying
+            username_list += f"{special_marker} **`{username}`** {chat_color['emoji']} ({chat_color['name']})\n"
             
             # Break into multiple fields if list is too long
             if (i + 1) % 10 == 0 or i == len(sorted_usernames) - 1:
