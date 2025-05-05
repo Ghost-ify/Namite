@@ -459,20 +459,25 @@ async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     Raises:
         Exception: If there's an error with the API requests that can't be handled
     """
-    # Check in-memory cache first (very recent checks)
+    # First check the database for 3-day cooldown
+    from database import is_username_in_cooldown, get_username_status
+    
+    if is_username_in_cooldown(username):
+        # Username was checked in the last 3 days, get the status from the database
+        status = get_username_status(username)
+        if status:
+            logger.info(f"Username {username} is in 3-day cooldown period, using cached result")
+            return status['is_available'], status['status_code'], status['message']
+    
+    # Check in-memory cache next (very recent checks)
     current_time = time.time()
     if username in memory_cache:
         is_available, status_code, message, timestamp = memory_cache[username]
         if current_time - timestamp < MEMORY_CACHE_EXPIRY:
             return is_available, status_code, message
     
-    # Check if this username is in cooldown (was checked in the last 3 days)
-    if is_username_in_cooldown(username):
-        # Return the stored result from the database
-        status = get_username_status(username)
-        if status:
-            logger.info(f"Username '{username}' in cooldown, returning cached result")
-            return status['is_available'], status['status_code'], status['message']
+    # We already checked for cooldown above, so this is redundant
+    # Keeping the comment to make this clear
     
     # Select which API endpoint to use
     api_index = select_next_api()
@@ -626,6 +631,16 @@ async def check_with_specific_api(username: str, api_index: int) -> Tuple[bool, 
     Returns:
         Tuple[bool, int, str]: Same as check_username_availability
     """
+    # First check the database for 3-day cooldown
+    from database import is_username_in_cooldown, get_username_status
+    
+    if is_username_in_cooldown(username):
+        # Username was checked in the last 3 days, get the status from the database
+        status = get_username_status(username)
+        if status:
+            logger.info(f"Username {username} is in 3-day cooldown period, using cached result (alt API)")
+            return status['is_available'], status['status_code'], status['message']
+    
     current_time = time.time()
     endpoint = API_ENDPOINTS[api_index]
     

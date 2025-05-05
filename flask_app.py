@@ -211,6 +211,36 @@ DASHBOARD_HTML = """
         .progress {
             height: 0.5rem;
         }
+        
+        /* Username color classes based on Roblox chat colors */
+        .username-color-0 { color: #F54545; } /* Red */
+        .username-color-1 { color: #00A2FF; } /* Blue */
+        .username-color-2 { color: #02B757; } /* Green */
+        .username-color-3 { color: #AC5CB1; } /* Purple */
+        .username-color-4 { color: #FF8134; } /* Orange */
+        .username-color-5 { color: #FFCC00; } /* Yellow */
+        .username-color-6 { color: #FF73BE; } /* Pink */
+        .username-color-7 { color: #D4A681; } /* Almond */
+        
+        /* Copy success animation */
+        .copy-success {
+            background-color: #198754 !important;
+            color: white !important;
+            transition: all 0.3s ease;
+        }
+        
+        /* Valuable username highlighting */
+        .valuable-username {
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .valuable-username::before {
+            content: "💎";
+            position: absolute;
+            left: -20px;
+            top: 3px;
+        }
     </style>
     <meta http-equiv="refresh" content="60">
     <script>

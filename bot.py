@@ -721,8 +721,8 @@ class RobloxUsernameBot:
             inline=False
         )
         
-        # Set footer with timestamp
-        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')} • Batch generated at {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        # Set footer with timestamp and 3-day cooldown note
+        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')} • Batch generated at {current_time.strftime('%Y-%m-%d %H:%M:%S')} • Usernames will not be rechecked for 3 days")
         
         # Send the batch message
         logger.info(f"Sending batch of {usernames_count} available usernames")
