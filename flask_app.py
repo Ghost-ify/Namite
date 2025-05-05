@@ -50,7 +50,9 @@ def get_bot_statistics():
                 cookie_status.append({
                     'success_rate': success_rate,
                     'cooldown_until': status['cooldown_until'],
-                    'last_used_ago': last_used_ago
+                    'last_used_ago': last_used_ago,
+                    'success_count': status['success_count'],
+                    'error_count': status['error_count']
                 })
 
         conn = get_db_connection()
@@ -181,7 +183,9 @@ def get_bot_statistics():
                 "success_rate": success_rate,
                 "success_rate_24h": success_rate_24h,
                 "api_status": api_status,
-                "adaptive_learning": adaptive_learning
+                "adaptive_learning": adaptive_learning,
+                "cookie_count": len(cookie_status),
+                "cookie_status": cookie_status
             }
         finally:
             conn.close()
@@ -728,47 +732,73 @@ DASHBOARD_HTML = """
                         {% endif %}
                     </div>
                 </div>
-
                 <!-- Instructions -->
                 <div class="card stats-card">
                     <div class="card-header">
-                        <h4>Instructions</h4>
+                        <h4>Cookie Performance</h4>
                     </div>
                     <div class="card-body">
-                        <p>The bot is fully autonomous and runs in the background. You can use these Discord commands:</p>
-                        <divclass="bg-dark p-3 rounded mb-3">
-                            <code>!roblox check &lt;username&gt;</code> - Check if a specific username is available<br>
-                            <code>!roblox length &lt;number&gt;</code> - Generate and check usernames of specific length<br>
-                            <code>!roblox length &lt;min&gt;-&lt;max&gt;</code> - Check usernames in a length range<br>
-                            <code>!roblox stats</code> - Show bot statistics<br>
-                            <code>!roblox recent</code> - Show recently found usernames<br>
-                            <code>!roblox help</code> - Show help message
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="alert alert-info">
+                                    <h5>Cookie Health Overview</h5>
+                                    <div class="d-flex justify-content-between">
+                                        <div>Total Requests: <span class="badge bg-primary">{{ stats.total_checked }}</span></div>
+                                        <div>Error Rate: <span class="badge bg-{{ 'success' if (stats.errors_count / stats.total_checked * 100) < 20 else 'warning' if (stats.errors_count / stats.total_checked * 100) < 50 else 'danger' }}">{{ "%.1f"|format(stats.errors_count / stats.total_checked * 100) }}%</span></div>
+                                        <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <h5>Username Rules</h5>
-                        <ul>
-                            <li>Length: 3-20 characters</li>
-                            <li>Allowed characters: letters, numbers, and underscore (_)</li>
-                            <li>Cannot start or end with an underscore</li>
-                            <li>Maximum one underscore</li>
-                            <li>Cannot be all numbers</li>
-                        </ul>
+                        <table class="table table-dark table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Cookie #</th>
+                                    <th>Error Rate</th>
+                                    <th>Status</th>
+                                    <th>Last Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for status in stats.cookie_status %}
+                                    {% set error_rate = status.error_count / (status.error_count + status.success_count) * 100 if (status.error_count + status.success_count) > 0 else 0 %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-{{ 'success' if error_rate < 20 else 'warning' if error_rate < 50 else 'danger' }}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ error_rate }}%">
+                                                    {{ "%.1f"|format(error_rate) }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% set cooldown = status.cooldown_until|float > current_time|float %}
+                                            {% if cooldown %}
+                                                <span class="badge bg-warning">Cooldown</span>
+                                            {% elif error_rate < 20 %}
+                                                <span class="badge bg-success">Healthy</span>
+                                            {% elif error_rate < 50 %}
+                                                <span class="badge bg-warning">Degraded</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Poor</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ status.last_used_ago }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
 
-                        <div class="alert alert-secondary" role="alert">
-                            <small>💎 Usernames with 3-4 characters are considered more valuable and will trigger Discord pings.</small>
-                        </div>
-
-                        <h5>🌈 Chat Color Prediction</h5>
-                        <p>The bot predicts which chat color each username will have in Roblox using the official algorithm from Roblox's <a href="https://github.com/Roblox/Core-Scripts/blob/master/CoreScriptsRoot/Modules/Chat.lua" target="_blank">Core-Scripts repository</a>.</p>
-                        <div class="d-flex flex-wrap">
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🔴</span>Red</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🔵</span>Blue</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟢</span>Green</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟣</span>Purple</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟠</span>Orange</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟡</span>Yellow</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🌸</span>Pink</div>
-                            <div class="me-2 mb-2 p-1 border rounded"><span class="me-1">🟤</span>Almond</div>
+                        <div class="alert alert-warning mt-3">
+                            <h6>⚠️ Error Handling</h6>
+                            <ul>
+                                <li>Cookies with error rates >50% are marked as poor</li>
+                                <li>Cookies with 5+ consecutive errors enter cooldown</li>
+                                <li>System automatically rotates through healthy cookies</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -789,38 +819,6 @@ def dashboard():
     # Get statistics
     stats = get_bot_statistics()
     current_time = time.time()
-
-    # Initialize cookie status
-    stats['cookie_status'] = []
-    stats['cookie_count'] = 0
-
-    # Add cookie status
-    try:
-        from roblox_api import adaptive_system
-        if adaptive_system and hasattr(adaptive_system, 'cookie_status'):
-            stats['cookie_count'] = len(adaptive_system.cookie_status)
-
-            for i, status in enumerate(adaptive_system.cookie_status):
-                total = status.get('success_count', 0) + status.get('error_count', 0)
-                success_rate = (status.get('success_count', 0) / max(1, total)) * 100
-                time_diff = current_time - status.get('last_used', current_time)
-
-                if time_diff < 60:
-                    last_used_ago = f"{int(time_diff)}s ago"
-                elif time_diff < 3600:
-                    last_used_ago = f"{int(time_diff/60)}m ago"
-                else:
-                    last_used_ago = f"{int(time_diff/3600)}h ago"
-
-                stats['cookie_status'].append({
-                    'success_rate': float(success_rate),
-                    'success_count': status.get('success_count', 0),
-                    'error_count': status.get('error_count', 0),
-                    'cooldown_until': status.get('cooldown_until', 0),
-                    'last_used_ago': last_used_ago
-                })
-    except Exception as e:
-        logger.error(f"Error getting cookie status: {str(e)}")
 
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
