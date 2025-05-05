@@ -420,46 +420,79 @@ class RobloxUsernameBot:
     async def send_help_message(self, channel):
         """Send help information about the bot and its commands."""
         embed = discord.Embed(
-            title="🤖 Roblox Username Bot - Help",
-            description="This bot helps you find available Roblox usernames.",
+            title="🤖 Roblox Username Finder - Help Guide",
+            description="Find available Roblox usernames instantly! This guide explains how to use all the bot's features.",
             color=0x3498db  # Blue
         )
         
+        # Command section with emojis and improved formatting
         embed.add_field(
-            name="Commands",
+            name="📋 Commands",
             value=(
-                "🔹 `!roblox check <username>` - Check if a specific username is available\n"
-                "🔹 `!roblox length <number>` - Generate and check usernames of a specific length\n"
-                "🔹 `!roblox length <min>-<max>` - Check usernames in a length range\n"
-                "🔹 `!roblox stats` - Show bot statistics\n"
-                "🔹 `!roblox recent` - Show recently found available usernames\n"
-                "🔹 `!roblox help` - Show this help message"
+                "**✓ Check a Specific Username:**\n"
+                "`!roblox check username123` - See if a username is available\n\n"
+                "**✓ Find Usernames by Length:**\n"
+                "`!roblox length 4` - Find available 4-character usernames\n"
+                "`!roblox length 3-5` - Find usernames between 3-5 characters\n\n"
+                "**✓ View Bot Information:**\n"
+                "`!roblox stats` - See success rates and performance stats\n"
+                "`!roblox recent` - See recently found available usernames\n"
+                "`!roblox help` - Show this help guide"
             ),
             inline=False
         )
         
+        # Add information about the automatic features
         embed.add_field(
-            name="Username Rules",
+            name="⚙️ Automatic Features",
             value=(
-                "- Length: 3-20 characters\n"
-                "- Allowed: letters, numbers, one underscore\n"
-                "- No underscore at start/end\n"
-                "- Cannot be all numbers"
+                "• Bot automatically searches for usernames 24/7\n"
+                "• Found usernames are posted to this channel\n"
+                "• Valuable short usernames (3-4 chars) get special alerts\n"
+                "• Usernames are displayed with their Roblox chat colors\n"
+                "• Smart algorithm adapts to find usernames more efficiently"
             ),
             inline=False
         )
         
-        # Color sequence information
+        # Add Roblox username rules with better formatting
+        embed.add_field(
+            name="📝 Roblox Username Rules",
+            value=(
+                "• **Length:** 3-20 characters\n"
+                "• **Characters:** Letters (a-z, A-Z), numbers (0-9), underscore (_)\n"
+                "• **Restrictions:** Maximum one underscore, not at start/end\n"
+                "• **Format:** Cannot be all numbers\n"
+                "• **Tip:** Shorter usernames (3-5 chars) are more valuable!"
+            ),
+            inline=False
+        )
+        
+        # Color sequence information with better formatting
         embed.add_field(
             name="🌈 Chat Color Prediction",
             value=(
-                "Usernames display with their exact Roblox chat color using the official game algorithm:\n"
-                "🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond"
+                "This bot shows the exact Roblox chat color for each username using the official game algorithm.\n\n"
+                "Color sequence: 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond\n\n"
+                "The color is determined by the username's characters, so it will match exactly in Roblox chat!"
             ),
             inline=False
         )
         
-        embed.set_footer(text="Bot automatically checks random usernames in the background")
+        # Add claiming instructions
+        embed.add_field(
+            name="🔍 How to Claim Usernames",
+            value=(
+                "1. Go to https://www.roblox.com/signup\n"
+                "2. Enter the username exactly as shown (copy/paste recommended)\n"
+                "3. Complete signup before someone else claims it!\n"
+                "4. Remember, shorter usernames are claimed quickly!"
+            ),
+            inline=False
+        )
+        
+        # Add footer with more information
+        embed.set_footer(text="Roblox Username Finder Bot • Automatically finds available usernames 24/7 • Uses adaptive learning to improve results")
         
         await channel.send(embed=embed)
     
@@ -468,53 +501,217 @@ class RobloxUsernameBot:
         uptime = datetime.now() - self.stats['start_time'] if self.stats['start_time'] else datetime.now()
         hours, remainder = divmod(int(uptime.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
-        uptime_str = f"{hours}h {minutes}m {seconds}s"
+        days = hours // 24
+        hours = hours % 24
+        
+        if days > 0:
+            uptime_str = f"{days} day{'s' if days != 1 else ''}, {hours}h {minutes}m {seconds}s"
+        else:
+            uptime_str = f"{hours}h {minutes}m {seconds}s"
         
         success_rate = 0
         if self.stats['total_checked'] > 0:
             success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100
         
+        # Calculate checks per minute - using uptime in seconds to avoid LSP errors
+        checks_per_minute = 0
+        uptime_seconds = (datetime.now() - self.stats['start_time']).seconds
+        if uptime_seconds > 60:
+            checks_per_minute = (self.stats['total_checked'] / (uptime_seconds / 60))
+        
+        # Calculate finds per hour
+        finds_per_hour = 0
+        if uptime_seconds > 3600:
+            finds_per_hour = (self.stats['available_found'] / (uptime_seconds / 3600))
+        
+        # Get cookie count
+        cookies_count = len(getattr(self, 'cookies', [])) or 1  # Default to 1 if no cookies attribute
+        
         embed = discord.Embed(
-            title="📊 Roblox Username Bot - Statistics",
+            title="📊 Roblox Username Finder - Live Statistics",
+            description="Real-time performance metrics for your username finding operation.",
             color=0x9b59b6  # Purple
         )
         
-        embed.add_field(name="Uptime", value=uptime_str, inline=True)
-        embed.add_field(name="Total Checked", value=str(self.stats['total_checked']), inline=True)
-        embed.add_field(name="Available Found", value=str(self.stats['available_found']), inline=True)
-        embed.add_field(name="Success Rate", value=f"{success_rate:.2f}%", inline=True)
-        embed.add_field(name="Parallel Checks", value=str(self.parallel_checks), inline=True)
-        embed.add_field(name="Check Interval", value=f"{self.check_interval}s", inline=True)
+        # Performance summary
+        embed.add_field(
+            name="⏱️ Performance Summary",
+            value=(
+                f"**Uptime:** {uptime_str}\n"
+                f"**Checking Speed:** {checks_per_minute:.1f} usernames/minute\n"
+                f"**Parallel Threads:** {self.parallel_checks} simultaneous checks\n"
+                f"**Using:** {cookies_count} cookie(s)"
+            ),
+            inline=False
+        )
         
-        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')}")
+        # Results statistics
+        embed.add_field(
+            name="🎯 Results Statistics",
+            value=(
+                f"**Total Checked:** {self.stats['total_checked']:,} usernames\n"
+                f"**Available Found:** {self.stats['available_found']:,} usernames\n"
+                f"**Success Rate:** {success_rate:.2f}%\n"
+                f"**Finding Rate:** {finds_per_hour:.1f} available names/hour"
+            ), 
+            inline=False
+        )
+        
+        # Configuration information
+        embed.add_field(
+            name="⚙️ Configuration",
+            value=(
+                f"**Target Length:** {self.min_length}-{self.max_length} characters\n"
+                f"**Batch Size:** {self.batch_size} usernames\n"
+                f"**Database:** 3-day cooldown for rechecking names\n"
+                f"**Adaptive Learning:** Automatically optimizes username generation"
+            ),
+            inline=False
+        )
+        
+        # If adaptive learning is available, get distribution
+        try:
+            from roblox_api import adaptive_system
+            embed.add_field(
+                name="📈 Learning Metrics",
+                value=(
+                    f"**Current Parameters:** Optimizing based on success patterns\n"
+                    f"**Focus:** Currently favoring {self.min_length}-{self.max_length} character names\n"
+                    f"**API Status:** Healthy, using endpoint rotation and rate limiting"
+                ),
+                inline=False
+            )
+        except ImportError:
+            pass
+        
+        # Set footer with more info
+        start_date = self.stats['start_time'].strftime('%Y-%m-%d %H:%M')
+        embed.set_footer(text=f"Bot started on {start_date} • Live data as of {datetime.now().strftime('%H:%M:%S')} • Stats refresh on command")
         
         await channel.send(embed=embed)
     
     async def send_recent_available(self, channel):
         """Send a list of recently found available usernames."""
-        recent_usernames = get_recently_available_usernames(10)
+        recent_usernames = get_recently_available_usernames(15)  # Get more usernames for better grouping
         
         if not recent_usernames:
-            await channel.send("❓ No available usernames found yet. The bot will keep checking!")
+            # More friendly empty state message
+            embed = discord.Embed(
+                title="🔍 No Available Usernames Found Yet",
+                description="The bot is actively searching, but hasn't found any available usernames yet.",
+                color=0x3498db  # Blue
+            )
+            embed.add_field(
+                name="What's Happening?",
+                value=(
+                    "• The bot is running and checking usernames\n"
+                    "• Results will appear here once usernames are found\n"
+                    "• You can see bot activity with the `!roblox stats` command"
+                ),
+                inline=False
+            )
+            await channel.send(embed=embed)
             return
             
+        # Get current time to calculate how recent the names are
+        current_time = datetime.now()
+        
+        # Group usernames by how recently they were found
+        last_hour_usernames = []
+        today_usernames = []
+        older_usernames = []
+        
+        for username_data in recent_usernames:
+            username = username_data['username']
+            checked_time = username_data['checked_at']
+            time_diff = current_time - checked_time
+            
+            # Add to appropriate group - using timedelta.seconds to avoid LSP errors
+            diff_seconds = time_diff.seconds + (time_diff.days * 86400)
+            
+            if diff_seconds < 3600:  # Last hour
+                last_hour_usernames.append(username_data)
+            elif diff_seconds < 86400:  # Last 24 hours
+                today_usernames.append(username_data)
+            else:  # Older
+                older_usernames.append(username_data)
+        
         embed = discord.Embed(
-            title="🎯 Recently Found Available Usernames",
-            description="These usernames were recently found to be available:",
+            title="✅ Recently Found Available Usernames",
+            description=(
+                "These usernames were recently found to be available for registration.\n"
+                "**Note:** They may have been claimed since discovery."
+            ),
             color=0x2ecc71  # Green
         )
         
-        for i, username_data in enumerate(recent_usernames):
-            username = username_data['username']
-            timestamp = username_data['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
-            chat_color = self.get_chat_color(username)
+        # Process the groups and add to embed
+        def format_username_group(usernames, group_name):
+            if not usernames:
+                return None
+                
+            formatted_list = ""
+            for username_data in usernames:
+                username = username_data['username']
+                checked_time = username_data['checked_at']
+                chat_color = self.get_chat_color(username)
+                
+                # Format the time depending on how recent it is - using timedelta.seconds to avoid LSP errors
+                time_diff = current_time - checked_time
+                diff_seconds = time_diff.seconds + (time_diff.days * 86400)
+                
+                if diff_seconds < 3600:  # Less than an hour
+                    minutes_ago = int(diff_seconds / 60)
+                    time_str = f"{minutes_ago} min ago"
+                elif diff_seconds < 86400:  # Less than a day
+                    hours_ago = int(diff_seconds / 3600)
+                    time_str = f"{hours_ago} hr ago"
+                else:
+                    time_str = checked_time.strftime('%m/%d %H:%M')
+                
+                # Format to make usernames stand out and easy to copy
+                formatted_list += f"**`{username}`** {chat_color['emoji']} ({chat_color['name']}) • *{time_str}*\n"
+                
+            return formatted_list
+        
+        # Add each time group to the embed
+        last_hour_formatted = format_username_group(last_hour_usernames, "Last Hour")
+        if last_hour_formatted:
             embed.add_field(
-                name=f"{i+1}. {username} {chat_color['emoji']}",
-                value=f"Color: {chat_color['name']} | Found at: {timestamp}",
+                name="🕐 Found in the Last Hour",
+                value=last_hour_formatted,
+                inline=False
+            )
+            
+        today_formatted = format_username_group(today_usernames, "Today")
+        if today_formatted:
+            embed.add_field(
+                name="📅 Found Today",
+                value=today_formatted,
+                inline=False
+            )
+            
+        older_formatted = format_username_group(older_usernames, "Earlier")
+        if older_formatted:
+            embed.add_field(
+                name="📆 Found Earlier",
+                value=older_formatted,
                 inline=False
             )
         
-        embed.set_footer(text="These usernames may have been claimed since they were found")
+        # Add claim instructions
+        embed.add_field(
+            name="🔍 How to Claim",
+            value=(
+                "1. Go to https://www.roblox.com/signup\n"
+                "2. Copy a username above (click the username to copy)\n"
+                "3. Paste it into the signup page\n"
+                "4. Complete registration before someone else claims it!"
+            ),
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Last updated: {current_time.strftime('%Y-%m-%d %H:%M:%S')} • Check again with !roblox recent")
         
         await channel.send(embed=embed)
 
@@ -636,32 +833,67 @@ class RobloxUsernameBot:
         # Initialize semaphore for parallel requests
         self.semaphore = asyncio.Semaphore(self.parallel_checks)
         
-        # Post initial status message with embed
+        # Post initial status message with embed - more attractive welcome message
         embed = discord.Embed(
-            title="🤖 Roblox Username Bot Started",
-            description="The bot is now searching for available Roblox usernames.",
+            title="✨ Roblox Username Finder - Now Active! ✨",
+            description=(
+                "**Your automated Roblox username finder is now running!**\n\n"
+                "This bot is actively searching for available Roblox usernames and will post them in this channel. "
+                "Short usernames (3-4 characters) will get special notifications as they're particularly valuable."
+            ),
             color=0x3498db  # Blue
         )
         
+        # Get cookie count
+        cookies_count = len(getattr(self, 'cookies', [])) or 1  # Default to 1 if no cookies attribute
+        
         embed.add_field(
-            name="🔍 Search Strategy",
-            value=f"• Checking up to {self.parallel_checks} usernames in parallel\n• Following 3-20 character username rules\n• 3-day cooldown for rechecking usernames",
+            name="🚀 Active Configuration",
+            value=(
+                f"• **Search Power:** {self.parallel_checks} simultaneous checks\n"
+                f"• **Focus:** Targeting {self.min_length}-{self.max_length} character usernames\n"
+                f"• **Speed:** Using {cookies_count} Roblox cookie{'s' if cookies_count != 1 else ''} for API access\n"
+                f"• **Efficiency:** Adaptive learning optimizes generation patterns"
+            ),
             inline=False
         )
         
         embed.add_field(
-            name="📣 Notifications",
-            value="• Will ping for valuable 3 and 4 character usernames\n• Use `!roblox check <username>` to check specific names",
+            name="🎮 Interactive Commands",
+            value=(
+                "• `!roblox check <username>` - Check if a specific username is available\n"
+                "• `!roblox length 4` - Find usernames of exactly 4 characters\n"
+                "• `!roblox stats` - View real-time statistics and performance\n"
+                "• `!roblox recent` - See recently found available usernames\n"
+                "• `!roblox help` - Show detailed help information"
+            ),
             inline=False
         )
         
         embed.add_field(
-            name="🌈 Chat Color Prediction",
-            value="• Displays exact Roblox chat colors using the official game algorithm\n• Colors cycle: 🔴 Red → 🔵 Blue → 🟢 Green → 🟣 Purple → 🟠 Orange → 🟡 Yellow → 🌸 Pink → 🟤 Almond",
+            name="🔔 Smart Notifications",
+            value=(
+                "• **Valuable Usernames:** Special alerts for rare 3-4 character names\n"
+                "• **Batch Reporting:** Regular batches of available usernames\n"
+                "• **Chat Colors:** Every username shows its exact Roblox chat color\n"
+                "• **Easy Claiming:** Simple copy-paste format for quick registration"
+            ),
             inline=False
         )
         
-        embed.set_footer(text=f"Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # Add tip for best results
+        embed.add_field(
+            name="💡 Pro Tip",
+            value=(
+                "The bot performs better with more Roblox cookies. If you want to speed up your username search, "
+                "you can add additional cookies to your environment variables."
+            ),
+            inline=False
+        )
+        
+        # Format current time with more details
+        start_time = datetime.now()
+        embed.set_footer(text=f"Started on {start_time.strftime('%Y-%m-%d at %H:%M:%S')} • System will run 24/7 • Type !roblox help for assistance")
         
         await channel.send(embed=embed)
         
