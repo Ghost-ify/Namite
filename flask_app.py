@@ -89,17 +89,17 @@ def get_bot_statistics():
             )
             errors_count = cursor.fetchone()[0] or 0
 
-            # Get checks in last 24 hours
+            # Get checks in last 5 minutes
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE checked_at >= %s",
-                (datetime.now() - timedelta(days=1),)
+                (datetime.now() - timedelta(minutes=5),)
             )
             checks_last_24h = cursor.fetchone()[0] or 0
 
-            # Get available in last 24 hours
+            # Get available in last 5 minutes
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE AND checked_at >= %s",
-                (datetime.now() - timedelta(days=1),)
+                (datetime.now() - timedelta(minutes=5),)
             )
             available_last_24h = cursor.fetchone()[0] or 0
 
