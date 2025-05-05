@@ -366,7 +366,7 @@ DASHBOARD_HTML = """
                             </td>
                             <td>{{ ((status.success_count + status.error_count) / 5)|round(1) }}</td>
                             <td>
-                                {% if status.cooldown_until|float > current_time|float %}
+                                {% if status.get('cooldown_until', 0) > stats.get('current_time', 0) %}
                                     <span class="badge bg-warning">Cooldown</span>
                                 {% elif error_rate < 20 %}
                                     <span class="badge bg-success">Healthy</span>
