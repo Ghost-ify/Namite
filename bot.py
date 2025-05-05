@@ -9,7 +9,7 @@ import random
 import re
 from datetime import datetime
 from username_generator import generate_username, generate_username_with_length, validate_username
-from roblox_api import check_username_availability
+from roblox_api import check_username_availability, get_user_details
 from database import get_username_status, get_recently_available_usernames
 
 logger = logging.getLogger('roblox_username_bot')
@@ -201,17 +201,19 @@ class RobloxUsernameBot:
             return
             
         # Send a "checking" message
-        checking_message = await channel.send(f"🔍 Checking availability of username: `{username}`...")
+        checking_message = await channel.send(f"🔍 Checking username: `{username}`...")
         
         try:
+            # Get the chat color for this username
+            chat_color = self.get_chat_color(username)
+            
             # Check the availability
             is_available, status_code, message = await check_username_availability(username)
             
             if is_available:
-                # Username properties
+                # Username is available - show details
                 username_length = len(username)
                 is_valuable = username_length <= 4
-                chat_color = self.get_chat_color(username)
                 
                 # Create an embed for available username
                 embed = discord.Embed(
@@ -240,16 +242,43 @@ class RobloxUsernameBot:
                 else:
                     await checking_message.edit(content=None, embed=embed)
             else:
-                # Create an embed for unavailable username
-                embed = discord.Embed(
-                    title="❌ Username is Unavailable",
-                    description=f"**{username}**",
-                    color=0xff0000  # Red
-                )
-                embed.add_field(name="Reason", value=message, inline=False)
-                embed.set_footer(text="This username cannot be registered on Roblox")
+                # Username is not available - try to get user info
+                user_details = await get_user_details(username)
                 
-                await checking_message.edit(content=None, embed=embed)
+                if user_details:
+                    # User exists - create rich embed with detailed info
+                    embed = discord.Embed(
+                        title="👤 Existing Roblox User",
+                        description=f"**{user_details['username']}** {chat_color['emoji']}",
+                        color=0x3498db,  # Blue
+                        url=user_details['profile_url']
+                    )
+                    
+                    # Add user info
+                    embed.add_field(name="📋 Display Name", value=user_details['display_name'], inline=True)
+                    embed.add_field(name="🆔 User ID", value=str(user_details['user_id']), inline=True)
+                    embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
+                    embed.add_field(name="⏱️ Account Age", value=user_details['account_age'], inline=True)
+                    
+                    # Set user avatar as thumbnail
+                    if user_details['avatar_url']:
+                        embed.set_thumbnail(url=user_details['avatar_url'])
+                    
+                    embed.set_footer(text="Account information retrieved from Roblox API")
+                    
+                    await checking_message.edit(content=None, embed=embed)
+                else:
+                    # Username is taken but we couldn't get details - create simple embed
+                    embed = discord.Embed(
+                        title="❌ Username is Unavailable",
+                        description=f"**{username}** {chat_color['emoji']}",
+                        color=0xff0000  # Red
+                    )
+                    embed.add_field(name="Reason", value=message, inline=False)
+                    embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
+                    embed.set_footer(text="This username cannot be registered on Roblox")
+                    
+                    await checking_message.edit(content=None, embed=embed)
         except Exception as e:
             logger.error(f"Error checking username {username}: {str(e)}")
             await checking_message.edit(content=f"⚠️ Error checking username: `{username}`. Please try again later.")

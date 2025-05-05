@@ -10,6 +10,7 @@ import math
 import json
 import urllib.parse
 import os
+from datetime import datetime, timezone
 from typing import Tuple, Optional, Dict, List, Any
 from database import record_username_check, is_username_in_cooldown, get_username_status
 
@@ -336,6 +337,111 @@ def select_next_api():
     
     current_api_index = best_index
     return current_api_index
+
+async def get_user_details(username: str) -> Dict:
+    """
+    Get detailed information about a Roblox user if they exist.
+    
+    Args:
+        username (str): The Roblox username to look up
+        
+    Returns:
+        Dict: A dictionary containing user details if found, or None if not found:
+            - user_id: The Roblox user ID
+            - username: The Roblox username
+            - display_name: The display name
+            - created: The account creation date
+            - avatar_url: URL to the user's avatar image
+            - profile_url: URL to the user's profile
+    """
+    # Try to get user ID from username
+    api_url = "https://users.roblox.com/v1/users/search"
+    params = {
+        "keyword": username,
+        "limit": 10
+    }
+    
+    try:
+        status_code, response_text = await make_http_request(
+            api_url, 
+            params=params,
+            headers_index=random.randint(0, len(BROWSER_HEADERS) - 1)
+        )
+        
+        if status_code != 200:
+            return None
+        
+        data = json.loads(response_text)
+        
+        # Find the exact username match
+        matched_user = None
+        for user in data.get("data", []):
+            if user.get("name", "").lower() == username.lower():
+                matched_user = user
+                break
+                
+        if not matched_user:
+            return None
+            
+        user_id = matched_user.get("id")
+        
+        # Get more user details
+        user_url = f"https://users.roblox.com/v1/users/{user_id}"
+        status_code, response_text = await make_http_request(
+            user_url,
+            params={},
+            headers_index=random.randint(0, len(BROWSER_HEADERS) - 1)
+        )
+        
+        if status_code != 200:
+            return None
+            
+        user_data = json.loads(response_text)
+        
+        # Get avatar thumbnail
+        avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar?userIds={user_id}&size=420x420&format=Png"
+        status_code, response_text = await make_http_request(
+            avatar_url,
+            params={},
+            headers_index=random.randint(0, len(BROWSER_HEADERS) - 1)
+        )
+        
+        avatar_image_url = None
+        if status_code == 200:
+            avatar_data = json.loads(response_text)
+            if avatar_data.get("data") and len(avatar_data["data"]) > 0:
+                avatar_image_url = avatar_data["data"][0].get("imageUrl")
+        
+        # Format creation date
+        created_date = None
+        if "created" in user_data:
+            try:
+                created_date = datetime.fromisoformat(user_data["created"].replace("Z", "+00:00"))
+                # Calculate account age
+                age_days = (datetime.now(timezone.utc) - created_date).days
+                if age_days > 365:
+                    years = age_days // 365
+                    remaining_days = age_days % 365
+                    account_age = f"{years} year{'s' if years != 1 else ''}, {remaining_days} day{'s' if remaining_days != 1 else ''}"
+                else:
+                    account_age = f"{age_days} day{'s' if age_days != 1 else ''}"
+            except:
+                account_age = "Unknown"
+        else:
+            account_age = "Unknown"
+            
+        return {
+            "user_id": user_id,
+            "username": user_data.get("name"),
+            "display_name": user_data.get("displayName"),
+            "created": user_data.get("created"),
+            "account_age": account_age,
+            "avatar_url": avatar_image_url,
+            "profile_url": f"https://www.roblox.com/users/{user_id}/profile"
+        }
+        
+    except Exception as e:
+        return None
 
 async def check_username_availability(username: str) -> Tuple[bool, int, str]:
     """
