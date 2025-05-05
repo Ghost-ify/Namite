@@ -305,9 +305,44 @@ class AdaptiveLearning:
             # If no cookies, use minimum values
             return MIN_PARALLEL_CHECKS
             
-        # Calculate optimal number of parallel checks based on cookie count
-        # More cookies = more parallel checks
-        optimal_checks = int(BASE_CHECKS_PER_COOKIE * cookie_count * CHECKS_SCALING_FACTOR)
+        # Calculate optimal checks with smart scaling
+        # More cookies = more checks, but with diminishing returns
+        base_multiplier = math.log(cookie_count + 1, 2)  # Logarithmic scaling
+        performance_factor = self._calculate_cookie_performance()
+        
+        optimal_checks = int(
+            BASE_CHECKS_PER_COOKIE * 
+            base_multiplier * 
+            performance_factor * 
+            CHECKS_SCALING_FACTOR
+        )
+        
+        # Cap maximum based on cookie count to prevent overload
+        max_per_cookie = 8  # Maximum requests per cookie
+        cookie_based_max = cookie_count * max_per_cookie
+        
+        optimal_checks = min(optimal_checks, cookie_based_max)
+        logger.info(f"Calculated optimal checks: {optimal_checks} for {cookie_count} cookies")
+        
+    def _calculate_cookie_performance(self) -> float:
+        """Calculate performance factor based on cookie success rates."""
+        if not self.cookie_status:
+            return 1.0
+            
+        # Calculate average success rate across cookies
+        success_rates = []
+        for status in self.cookie_status:
+            total = status['success_count'] + status['error_count']
+            if total > 0:
+                rate = status['success_count'] / total
+                success_rates.append(rate)
+        
+        if not success_rates:
+            return 1.0
+            
+        # Return a factor between 0.5 and 1.5 based on performance
+        avg_rate = sum(success_rates) / len(success_rates)
+        return max(0.5, min(1.5, avg_rate * 2))
         
         # Ensure we don't exceed the maximum allowed
         optimal_checks = min(MAX_PARALLEL_CHECKS, max(MIN_PARALLEL_CHECKS, optimal_checks))

@@ -183,15 +183,19 @@ for index in sorted(all_cookies.keys()):
 # Calculate dynamic delay based on number of cookies
 cookie_count = len(ROBLOX_COOKIES)
 if cookie_count > 0:
-    # Calculate minimum delay based on cookie count
-    # With more cookies, we can make requests faster
-    dynamic_min_delay = max(MIN_DELAY_MULTI, MIN_DELAY_BASE / cookie_count)
+    # Calculate minimum delay with exponential scaling
+    # More cookies = exponentially faster, but with a safe minimum
+    scaling_factor = 1 / (1 + math.log(cookie_count + 1))  # Logarithmic scaling
+    dynamic_min_delay = max(MIN_DELAY_MULTI, MIN_DELAY_BASE * scaling_factor)
     logger.info(f"Calculated dynamic minimum delay: {dynamic_min_delay:.3f}s based on {cookie_count} cookies")
     
-    # Update API endpoint delays based on cookie count
+    # Update API endpoint delays based on cookie count and performance
     for endpoint in API_ENDPOINTS:
-        # Start with a more conservative delay that will be adjusted dynamically
-        endpoint["delay"] = max(dynamic_min_delay, endpoint["delay"] / cookie_count)
+        # Scale delay based on cookie count but maintain minimum safety threshold
+        base_delay = endpoint["delay"] * scaling_factor
+        success_bonus = 0.9 if endpoint["success_streak"] > 5 else 1.0
+        endpoint["delay"] = max(dynamic_min_delay, base_delay * success_bonus)
+        logger.info(f"Endpoint {endpoint['name']} delay set to {endpoint['delay']:.3f}s")
         
     logger.info(f"Successfully loaded {len(ROBLOX_COOKIES)} Roblox cookies for API requests")
 else:
