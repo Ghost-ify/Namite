@@ -519,7 +519,7 @@ DASHBOARD_HTML = """
                             </div>
                             <div class="card-body py-2">
                                 <div class="progress mb-2" style="height: 25px;">
-                                    {% for length, percentage in (stats.adaptive_learning.length_distribution or {}).items()|sort %}
+                                    {% for length, percentage in (stats.adaptive_learning.length_distribution or {}).items|sort %}
                                     <div class="progress-bar bg-{{ ['success', 'info', 'primary', 'warning', 'danger', 'secondary']|random }}" 
                                          role="progressbar" 
                                          style="width: {{ percentage }}%" 
@@ -625,11 +625,9 @@ DASHBOARD_HTML = """
                                             </div>
                                         </td>
                                         <td>
-                                            {% if status.cooldown_until|float > current_time|float %}
-                                            <span class="badge bg-warning">Cooldown</span>
-                                            {% elif success_rate >= 80.0 %}
+                                            {% if success_rate >= 20.0 %}
                                             <span class="badge bg-success">Healthy</span>
-                                            {% elif success_rate >= 50.0 %}
+                                            {% elif success_rate >= 10.0 %}
                                             <span class="badge bg-warning">Degraded</span>
                                             {% else %}
                                             <span class="badge bg-danger">Poor</span>
@@ -738,7 +736,7 @@ DASHBOARD_HTML = """
                     </div>
                     <div class="card-body">
                         <p>The bot is fully autonomous and runs in the background. You can use these Discord commands:</p>
-                        <div class="bg-dark p-3 rounded mb-3">
+                        <divclass="bg-dark p-3 rounded mb-3">
                             <code>!roblox check &lt;username&gt;</code> - Check if a specific username is available<br>
                             <code>!roblox length &lt;number&gt;</code> - Generate and check usernames of specific length<br>
                             <code>!roblox length &lt;min&gt;-&lt;max&gt;</code> - Check usernames in a length range<br>
