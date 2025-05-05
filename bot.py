@@ -784,35 +784,38 @@ class RobloxUsernameBot:
                             ping_message = f"<@1017042087469912084> Valuable {username_length}-character username found!"
                             await channel.send(content=ping_message, embed=embed)
                         else:
-                            # For regular usernames, add to the batch queue
-                            # First check if this username is already in the queue to prevent duplicates
-                            already_in_queue = False
-                            for existing in self.pending_usernames:
-                                if existing['username'] == username:
-                                    already_in_queue = True
-                                    break
+                            # For usernames less than 5 characters, send immediately
+                            if username_length < 5:
+                                embed = discord.Embed(
+                                    title="💎 Short Username Found!",
+                                    description=f"**`{username}`** {chat_color['emoji']}",
+                                    color=0xffd700  # Gold
+                                )
+                                embed.add_field(name="📏 Length", value=str(username_length), inline=True)
+                                embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
+                                embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
+                                await channel.send(embed=embed)
+                            else:
+                                # For longer usernames, add to batch queue
+                                already_in_queue = False
+                                for existing in self.pending_usernames:
+                                    if existing['username'] == username:
+                                        already_in_queue = True
+                                        break
 
-                            if not already_in_queue:
-                                self.pending_usernames.append({
-                                    'username': username,
-                                    'length': username_length,
-                                    'has_underscore': '_' in username,
-                                    'timestamp': datetime.now()
-                                })
+                                if not already_in_queue:
+                                    self.pending_usernames.append({
+                                        'username': username,
+                                        'length': username_length,
+                                        'has_underscore': '_' in username,
+                                        'timestamp': datetime.now()
+                                    })
 
-                            # Send immediately if we have 3-5 usernames
-                            if 3 <= len(self.pending_usernames) <= 5:
-                                await self.send_batch_usernames(channel)
-                            elif len(self.pending_usernames) > 5:
-                                # If we have more than 5, send the first 5
-                                to_send = self.pending_usernames[:5]
-                                self.pending_usernames = self.pending_usernames[5:]
-                                # Store current pending usernames
-                                temp_pending = self.pending_usernames
-                                self.pending_usernames = to_send
-                                await self.send_batch_usernames(channel)
-                                # Restore remaining usernames
-                                self.pending_usernames = temp_pending
+                                # Schedule batch send every 5 minutes
+                                if not self.batch_timer or self.batch_timer.done():
+                                    self.batch_timer = asyncio.create_task(
+                                        self.schedule_batch_send(channel, 300)  # 300 seconds = 5 minutes
+                                    )
                     else:
                         logger.debug(f"Username '{username}' not available. Reason: {message}")
                 else:
