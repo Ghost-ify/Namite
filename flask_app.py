@@ -26,13 +26,13 @@ def get_bot_statistics():
         # Get cookie information from roblox_api
         from roblox_api import adaptive_system
         current_time = time.time()
-        
+
         cookie_status = []
         if adaptive_system and adaptive_system.cookie_status:
             for status in adaptive_system.cookie_status:
                 total = status['success_count'] + status['error_count']
                 success_rate = (status['success_count'] / max(1, total)) * 100
-                
+
                 # Calculate time since last use
                 time_diff = current_time - status['last_used']
                 if time_diff < 60:
@@ -41,13 +41,13 @@ def get_bot_statistics():
                     last_used_ago = f"{int(time_diff/60)}m ago"
                 else:
                     last_used_ago = f"{int(time_diff/3600)}h ago"
-                
+
                 cookie_status.append({
                     'success_rate': success_rate,
                     'cooldown_until': status['cooldown_until'],
                     'last_used_ago': last_used_ago
                 })
-        
+
         conn = get_db_connection()
         if not conn:
             return {
@@ -64,65 +64,65 @@ def get_bot_statistics():
                 "cookie_status": cookie_status,
                 "current_time": current_time
             }
-            
+
         cursor = conn.cursor()
-        
+
         try:
             # Get total checked
             cursor.execute("SELECT COUNT(*) FROM checked_usernames")
             total_checked = cursor.fetchone()[0] or 0
-            
+
             # Get available found
             cursor.execute("SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE")
             available_found = cursor.fetchone()[0] or 0
-            
+
             # Get error count (status_code 0 or >= 400 indicates errors)
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE status_code = 0 OR status_code >= 400"
             )
             errors_count = cursor.fetchone()[0] or 0
-            
+
             # Get checks in last 24 hours
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE checked_at >= %s",
                 (datetime.now() - timedelta(days=1),)
             )
             checks_last_24h = cursor.fetchone()[0] or 0
-            
+
             # Get available in last 24 hours
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE is_available = TRUE AND checked_at >= %s",
                 (datetime.now() - timedelta(days=1),)
             )
             available_last_24h = cursor.fetchone()[0] or 0
-            
+
             # Get errors in last 24 hours
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE (status_code = 0 OR status_code >= 400) AND checked_at >= %s",
                 (datetime.now() - timedelta(days=1),)
             )
             errors_last_24h = cursor.fetchone()[0] or 0
-            
+
             # Calculate success rate (excluding errors)
             valid_checks = total_checked - errors_count
             valid_checks_24h = checks_last_24h - errors_last_24h
-            
+
             success_rate = (available_found / valid_checks * 100) if valid_checks > 0 else 0
             success_rate_24h = (available_last_24h / valid_checks_24h * 100) if valid_checks_24h > 0 else 0
-            
+
             # Check API status based on recent errors
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE checked_at >= %s",
                 (datetime.now() - timedelta(minutes=5),)
             )
             recent_checks = cursor.fetchone()[0] or 0
-            
+
             cursor.execute(
                 "SELECT COUNT(*) FROM checked_usernames WHERE (status_code = 0 OR status_code >= 400) AND checked_at >= %s",
                 (datetime.now() - timedelta(minutes=5),)
             )
             recent_errors = cursor.fetchone()[0] or 0
-            
+
             # Determine API status
             api_status = "Healthy"
             if recent_checks > 0:
@@ -133,7 +133,7 @@ def get_bot_statistics():
                     api_status = "Degraded"
             elif errors_last_24h > 0:
                 api_status = "Unknown (No Recent Checks)"
-            
+
             # Get adaptive learning stats
             adaptive_learning = {}
             try:
@@ -142,7 +142,7 @@ def get_bot_statistics():
                     import json
                     with open('adaptive_state.json', 'r') as f:
                         state = json.load(f)
-                        
+
                     # Get key parameters
                     adaptive_learning = {
                         'parallel_checks': state.get('parallel_checks', 10),
@@ -152,7 +152,7 @@ def get_bot_statistics():
                         'length_weights': state.get('length_weights', {}),
                         'last_updated': state.get('last_updated', 'Unknown')
                     }
-                    
+
                     # Calculate normalized length distribution
                     length_weights = adaptive_learning.get('length_weights', {})
                     if length_weights:
@@ -165,7 +165,7 @@ def get_bot_statistics():
             except Exception as e:
                 app.logger.error(f"Error loading adaptive learning state: {str(e)}")
                 adaptive_learning = {'error': str(e)}
-            
+
             return {
                 "total_checked": total_checked,
                 "available_found": available_found,
@@ -215,7 +215,7 @@ DASHBOARD_HTML = """
             font-weight: bold;
             color: #ffc107;
         }
-        
+
         /* Roblox username chat color classes */
         .username-color-0 { color: #E74C3C; } /* Red */
         .username-color-1 { color: #3498DB; } /* Blue */
@@ -225,7 +225,7 @@ DASHBOARD_HTML = """
         .username-color-5 { color: #F1C40F; } /* Yellow */
         .username-color-6 { color: #FF9FF3; } /* Pink */
         .username-color-7 { color: #A47D5E; } /* Almond */
-        
+
         /* Copy button styling */
         .copy-icon {
             margin-left: 5px;
@@ -272,7 +272,7 @@ DASHBOARD_HTML = """
         .progress {
             height: 0.5rem;
         }
-        
+
         /* Username color classes based on Roblox chat colors */
         .username-color-0 { color: #F54545; } /* Red */
         .username-color-1 { color: #00A2FF; } /* Blue */
@@ -282,20 +282,20 @@ DASHBOARD_HTML = """
         .username-color-5 { color: #FFCC00; } /* Yellow */
         .username-color-6 { color: #FF73BE; } /* Pink */
         .username-color-7 { color: #D4A681; } /* Almond */
-        
+
         /* Copy success animation */
         .copy-success {
             background-color: #198754 !important;
             color: white !important;
             transition: all 0.3s ease;
         }
-        
+
         /* Valuable username highlighting */
         .valuable-username {
             font-weight: bold;
             position: relative;
         }
-        
+
         .valuable-username::before {
             content: "💎";
             position: absolute;
@@ -312,13 +312,13 @@ DASHBOARD_HTML = """
             input.setAttribute('value', text);
             document.body.appendChild(input);
             input.select();
-            
+
             // Execute copy command
             document.execCommand('copy');
-            
+
             // Clean up
             document.body.removeChild(input);
-            
+
             // Visual feedback
             // Using a safer approach for selector to avoid issues with special characters
             const elements = document.querySelectorAll('span[title="Click to copy"]');
@@ -328,7 +328,7 @@ DASHBOARD_HTML = """
                     setTimeout(() => {
                         element.classList.remove('copy-success');
                     }, 1000);
-                    
+
                     // Change icon temporarily
                     const icon = element.querySelector('.copy-icon');
                     if (icon) {
@@ -373,7 +373,7 @@ DASHBOARD_HTML = """
                             <h5 class="alert-heading">✅ Bot Active</h5>
                             <p>The bot is continuously checking for available Roblox usernames and posting findings to Discord.</p>
                         </div>
-                        
+
                         {% if stats.api_status == "Healthy" %}
                         <div class="alert alert-success mb-3" role="alert">
                             <h5 class="alert-heading">✅ API Status: Healthy</h5>
@@ -395,7 +395,7 @@ DASHBOARD_HTML = """
                             <p class="mb-0">Unable to determine the current API status.</p>
                         </div>
                         {% endif %}
-                        
+
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="text-center p-3 border rounded flex-fill me-2">
                                 <div class="stats-number">{{ stats.total_checked }}</div>
@@ -410,9 +410,9 @@ DASHBOARD_HTML = """
                                 <div class="stats-label">Success Rate</div>
                             </div>
                         </div>
-                        
+
                         <div class="text-muted small mb-2">* Success rate excludes error responses from calculations.</div>
-                        
+
                         {% if stats.adaptive_learning %}
                         <h5>Adaptive Learning System</h5>
                         <div class="row mb-3">
@@ -464,7 +464,7 @@ DASHBOARD_HTML = """
                         </div>
                         {% endif %}
                         {% endif %}
-                        
+
                         <h5>24-Hour Activity</h5>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="text-center p-2 border rounded flex-fill me-2">
@@ -480,13 +480,13 @@ DASHBOARD_HTML = """
                                 <div class="stats-label">API Errors</div>
                             </div>
                         </div>
-                        
+
                         <div class="progress mb-1">
                             <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.success_rate_24h }}%" 
                                  aria-valuenow="{{ stats.success_rate_24h }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                         <div class="text-muted small text-end">24h Success Rate: {{ "%.2f"|format(stats.success_rate_24h) }}%</div>
-                        
+
                         {% if stats.errors_last_24h > 0 %}
                         <div class="alert alert-warning mt-3">
                             <h6 class="alert-heading">⚠️ API Errors Detected</h6>
@@ -495,7 +495,7 @@ DASHBOARD_HTML = """
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <!-- Cookie Status -->
                 <div class="card stats-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -505,9 +505,9 @@ DASHBOARD_HTML = """
                     <div class="card-body">
                         {% if stats.cookie_status %}
                         <div class="alert alert-info mb-3">
-                            {% set working_cookies = stats.cookie_status|selectattr('success_rate', '>=', 80)|list|length %}
-                            {% set degraded_cookies = stats.cookie_status|selectattr('success_rate', '>=', 50)|selectattr('success_rate', '<', 80)|list|length %}
-                            {% set poor_cookies = stats.cookie_status|selectattr('success_rate', '<', 50)|list|length %}
+                            {% set working_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', '>=', 80.0)|list|length %}
+                            {% set degraded_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', '>=', 50.0)|selectattr('success_rate', '<', 80.0)|list|length %}
+                            {% set poor_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', '<', 50.0)|list|length %}
                             <strong>Cookie Status Summary:</strong><br>
                             ✅ Working well: {{ working_cookies }} cookies (80%+ success rate)<br>
                             ⚠️ Degraded: {{ degraded_cookies }} cookies (50-80% success rate)<br>
@@ -566,7 +566,7 @@ DASHBOARD_HTML = """
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-6">
                 <!-- Recently Available Usernames -->
                 <div class="card stats-card">
@@ -623,7 +623,7 @@ DASHBOARD_HTML = """
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <!-- Instructions -->
                 <div class="card stats-card">
                     <div class="card-header">
@@ -639,7 +639,7 @@ DASHBOARD_HTML = """
                             <code>!roblox recent</code> - Show recently found usernames<br>
                             <code>!roblox help</code> - Show help message
                         </div>
-                        
+
                         <h5>Username Rules</h5>
                         <ul>
                             <li>Length: 3-20 characters</li>
@@ -648,11 +648,11 @@ DASHBOARD_HTML = """
                             <li>Maximum one underscore</li>
                             <li>Cannot be all numbers</li>
                         </ul>
-                        
+
                         <div class="alert alert-secondary" role="alert">
                             <small>💎 Usernames with 3-4 characters are considered more valuable and will trigger Discord pings.</small>
                         </div>
-                        
+
                         <h5>🌈 Chat Color Prediction</h5>
                         <p>The bot predicts which chat color each username will have in Roblox using the official algorithm from Roblox's <a href="https://github.com/Roblox/Core-Scripts/blob/master/CoreScriptsRoot/Modules/Chat.lua" target="_blank">Core-Scripts repository</a>.</p>
                         <div class="d-flex flex-wrap">
@@ -680,10 +680,10 @@ def dashboard():
     # Get configuration values
     check_interval = os.environ.get('CHECK_INTERVAL', '60')
     channel_id = os.environ.get('CHANNEL_ID', 'Not configured')
-    
+
     # Get statistics
     stats = get_bot_statistics()
-    
+
     # Add cookie status if not present
     if not stats.get('cookie_status'):
         from roblox_api import adaptive_system
@@ -694,14 +694,14 @@ def dashboard():
                 total = status['success_count'] + status['error_count']
                 success_rate = (status['success_count'] / max(1, total)) * 100
                 time_diff = current_time - status['last_used']
-                
+
                 if time_diff < 60:
                     last_used_ago = f"{int(time_diff)}s ago"
-                elif time_diff < 3600:
+                elif time_diff < 36000:
                     last_used_ago = f"{int(time_diff/60)}m ago"
                 else:
                     last_used_ago = f"{int(time_diff/3600)}h ago"
-                    
+
                 stats['cookie_status'].append({
                     'success_rate': success_rate,
                     'success_count': status['success_count'],
@@ -709,10 +709,10 @@ def dashboard():
                     'cooldown_until': status['cooldown_until'],
                     'last_used_ago': last_used_ago
                 })
-    
+
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
-    
+
     # Format timestamps for display and calculate chat colors
     chat_colors = [
         {"name": "Red", "emoji": "🔴"},
@@ -724,7 +724,7 @@ def dashboard():
         {"name": "Pink", "emoji": "🌸"},
         {"name": "Almond", "emoji": "🟤"}
     ]
-    
+
     # Function to determine chat color (ported from Roblox source code)
     def get_chat_color(username):
         def get_name_value(pName):
@@ -732,24 +732,24 @@ def dashboard():
             for index in range(1, len(pName) + 1):
                 c_value = ord(pName[index - 1])
                 reverse_index = len(pName) - index + 1
-                
+
                 if len(pName) % 2 == 1:
                     reverse_index = reverse_index - 1
-                    
+
                 if reverse_index % 4 >= 2:
                     c_value = -c_value
-                    
+
                 value = value + c_value
-            
+
             return value
-        
+
         # Calculate name value and get color index
         color_offset = 0
         name_value = get_name_value(username)
         color_index = ((name_value + color_offset) % len(chat_colors))
-        
+
         return chat_colors[color_index]
-    
+
     for username in recent_usernames:
         username['checked_at'] = username['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
         color = get_chat_color(username['username'])
@@ -757,15 +757,15 @@ def dashboard():
         # Add color class for CSS styling (0-7 index based on color name)
         color_index = chat_colors.index(color)
         username['color_class'] = str(color_index)
-    
+
     # Get generator settings
     min_length = os.environ.get('MIN_LENGTH', '3') 
     max_length = os.environ.get('MAX_LENGTH', '6')
     batch_size = os.environ.get('BATCH_SIZE', '5')
-    
+
     # Current time for display
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+
     return render_template_string(
         DASHBOARD_HTML, 
         channel_id=channel_id,
