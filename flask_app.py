@@ -688,39 +688,39 @@ def dashboard():
 
     # Get statistics
     stats = get_bot_statistics()
+    current_time = time.time()
 
-    # Add cookie status if not present
+    # Initialize cookie status
+    stats['cookie_status'] = []
+    stats['cookie_count'] = 0
+
+    # Add cookie status
     try:
-        if not stats.get('cookie_status'):
-            from roblox_api import adaptive_system
-            if adaptive_system and hasattr(adaptive_system, 'cookie_status'):
-                current_time = time.time()
-                stats['cookie_status'] = []
-                stats['cookie_count'] = len(adaptive_system.cookie_status)
+        from roblox_api import adaptive_system
+        if adaptive_system and hasattr(adaptive_system, 'cookie_status'):
+            stats['cookie_count'] = len(adaptive_system.cookie_status)
 
-                for i, status in enumerate(adaptive_system.cookie_status):
-                    total = status.get('success_count', 0) + status.get('error_count', 0)
-                    success_rate = (status.get('success_count', 0) / max(1, total)) * 100
-                    time_diff = current_time - status.get('last_used', current_time)
+            for i, status in enumerate(adaptive_system.cookie_status):
+                total = status.get('success_count', 0) + status.get('error_count', 0)
+                success_rate = (status.get('success_count', 0) / max(1, total)) * 100
+                time_diff = current_time - status.get('last_used', current_time)
 
-                    if time_diff < 60:
-                        last_used_ago = f"{int(time_diff)}s ago"
-                    elif time_diff < 3600:
-                        last_used_ago = f"{int(time_diff/60)}m ago"
-                    else:
-                        last_used_ago = f"{int(time_diff/3600)}h ago"
+                if time_diff < 60:
+                    last_used_ago = f"{int(time_diff)}s ago"
+                elif time_diff < 3600:
+                    last_used_ago = f"{int(time_diff/60)}m ago"
+                else:
+                    last_used_ago = f"{int(time_diff/3600)}h ago"
 
-                    stats['cookie_status'].append({
-                        'success_rate': float(success_rate),
-                        'success_count': status.get('success_count', 0),
-                        'error_count': status.get('error_count', 0),
-                        'cooldown_until': status.get('cooldown_until', 0),
-                        'last_used_ago': last_used_ago
-                    })
+                stats['cookie_status'].append({
+                    'success_rate': float(success_rate),
+                    'success_count': status.get('success_count', 0),
+                    'error_count': status.get('error_count', 0),
+                    'cooldown_until': status.get('cooldown_until', 0),
+                    'last_used_ago': last_used_ago
+                })
     except Exception as e:
         logger.error(f"Error getting cookie status: {str(e)}")
-        stats['cookie_status'] = []
-        stats['cookie_count'] = 0
 
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
