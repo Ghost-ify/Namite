@@ -523,7 +523,7 @@ DASHBOARD_HTML = """
                             </div>
                             <div class="card-body py-2">
                                 <div class="progress mb-2" style="height: 25px;">
-                                    {% for length, percentage in (stats.adaptive_learning.length_distribution or {}).items|sort %}
+                                    {% for length, percentage in (stats.adaptive_learning.length_distribution or {}).items() | sort %}
                                     <div class="progress-bar bg-{{ ['success', 'info', 'primary', 'warning', 'danger', 'secondary']|random }}" 
                                          role="progressbar" 
                                          style="width: {{ percentage }}%" 
