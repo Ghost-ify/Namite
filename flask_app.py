@@ -9,6 +9,11 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template_string, jsonify
 from dotenv import load_dotenv
 from database import get_recently_available_usernames, get_db_connection, init_database
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 # Load environment variables
 load_dotenv()
@@ -445,7 +450,7 @@ DASHBOARD_HTML = """
                             </div>
                             <div class="card-body py-2">
                                 <div class="progress mb-2" style="height: 25px;">
-                                    {% for length, percentage in stats.adaptive_learning.length_distribution.items()|sort %}
+                                    {% for length, percentage in stats.adaptive_learning.length_distribution.items|sort %}
                                     <div class="progress-bar bg-{{ ['success', 'info', 'primary', 'warning', 'danger', 'secondary']|random }}" 
                                          role="progressbar" 
                                          style="width: {{ percentage }}%" 
@@ -685,30 +690,37 @@ def dashboard():
     stats = get_bot_statistics()
 
     # Add cookie status if not present
-    if not stats.get('cookie_status'):
-        from roblox_api import adaptive_system
-        if adaptive_system and adaptive_system.cookie_status:
-            current_time = time.time()
-            stats['cookie_status'] = []
-            for i, status in enumerate(adaptive_system.cookie_status):
-                total = status['success_count'] + status['error_count']
-                success_rate = (status['success_count'] / max(1, total)) * 100
-                time_diff = current_time - status['last_used']
+    try:
+        if not stats.get('cookie_status'):
+            from roblox_api import adaptive_system
+            if adaptive_system and hasattr(adaptive_system, 'cookie_status'):
+                current_time = time.time()
+                stats['cookie_status'] = []
+                stats['cookie_count'] = len(adaptive_system.cookie_status)
 
-                if time_diff < 60:
-                    last_used_ago = f"{int(time_diff)}s ago"
-                elif time_diff < 36000:
-                    last_used_ago = f"{int(time_diff/60)}m ago"
-                else:
-                    last_used_ago = f"{int(time_diff/3600)}h ago"
+                for i, status in enumerate(adaptive_system.cookie_status):
+                    total = status.get('success_count', 0) + status.get('error_count', 0)
+                    success_rate = (status.get('success_count', 0) / max(1, total)) * 100
+                    time_diff = current_time - status.get('last_used', current_time)
 
-                stats['cookie_status'].append({
-                    'success_rate': success_rate,
-                    'success_count': status['success_count'],
-                    'error_count': status['error_count'],
-                    'cooldown_until': status['cooldown_until'],
-                    'last_used_ago': last_used_ago
-                })
+                    if time_diff < 60:
+                        last_used_ago = f"{int(time_diff)}s ago"
+                    elif time_diff < 3600:
+                        last_used_ago = f"{int(time_diff/60)}m ago"
+                    else:
+                        last_used_ago = f"{int(time_diff/3600)}h ago"
+
+                    stats['cookie_status'].append({
+                        'success_rate': float(success_rate),
+                        'success_count': status.get('success_count', 0),
+                        'error_count': status.get('error_count', 0),
+                        'cooldown_until': status.get('cooldown_until', 0),
+                        'last_used_ago': last_used_ago
+                    })
+    except Exception as e:
+        logger.error(f"Error getting cookie status: {str(e)}")
+        stats['cookie_status'] = []
+        stats['cookie_count'] = 0
 
     # Get recently available usernames
     recent_usernames = get_recently_available_usernames(20)  # Show up to 20 recent usernames
