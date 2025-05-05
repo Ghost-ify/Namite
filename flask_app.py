@@ -212,6 +212,19 @@ DASHBOARD_HTML = """
         body {
             padding-top: 2rem;
             padding-bottom: 2rem;
+            color: #e6e6e6;
+        }
+        .text-muted {
+            color: #a6a6a6 !important;
+        }
+        .card {
+            background-color: #2d2d2d;
+        }
+        .table {
+            color: #e6e6e6;
+        }
+        code {
+            color: #00ff9d;
         }
         .stats-card {
             margin-bottom: 1.5rem;
