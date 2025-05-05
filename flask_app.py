@@ -696,7 +696,7 @@ def dashboard():
                 time_diff = current_time - status['last_used']
 
                 if time_diff < 60:
-                    last_used_ago = f"{int(timediff)}s ago"
+                    last_used_ago = f"{int(time_diff)}s ago"
                 elif time_diff < 36000:
                     last_used_ago = f"{int(time_diff/60)}m ago"
                 else:
