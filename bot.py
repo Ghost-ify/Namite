@@ -87,7 +87,7 @@ class RobloxUsernameBot:
 
         # Username generator settings (min and max length)
         self.min_length = 3
-        self.max_length = 6
+        self.max_length = 5
 
         # Roblox chat color algorithm
         self.chat_colors = [
