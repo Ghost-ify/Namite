@@ -332,18 +332,18 @@ DASHBOARD_HTML = """
                         <div class="mt-2">
                             <h6>Performance Metrics (Last 5 Minutes)</h6>
                             <div class="d-flex justify-content-between">
-                                {% set total_success = namespace(value=0) %}
-                                {% set total_errors = namespace(value=0) %}
+                                {% set stats_calc = namespace(success=0, errors=0, total=0) %}
                                 {% for status in stats.cookie_status %}
-                                    {% set total_success.value = total_success.value + status.success_count|default(0) %}
-                                    {% set total_errors.value = total_errors.value + status.error_count|default(0) %}
+                                    {% set stats_calc.success = stats_calc.success + status.success_count|default(0) %}
+                                    {% set stats_calc.errors = stats_calc.errors + status.error_count|default(0) %}
                                 {% endfor %}
-                                {% set total = total_success.value + total_errors.value %}
-                                {% set checks_per_min = ((total / 5)|round(1)) %}
-                                <div>Total Checks: <span class="badge bg-success">{{ total }}</span></div>
-                                <div>Success Rate: <span class="badge bg-primary">{{ ((total_success.value / total * 100) if total > 0 else 0)|round(1) }}%</span></div>
-                                <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
+                                {% set stats_calc.total = stats_calc.success + stats_calc.errors %}
+                                {% set success_rate = ((stats_calc.success / stats_calc.total * 100) if stats_calc.total > 0 else 0)|round(1) %}
+                                {% set checks_per_min = stats_calc.total %}
                                 <div>Checks/Min: <span class="badge bg-warning">{{ checks_per_min }}</span></div>
+                                <div>Success Rate: <span class="badge bg-primary">{{ success_rate }}%</span></div>
+                                <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
+                                <div>Total Checks: <span class="badge bg-success">{{ stats_calc.total }}</span></div>
                             </div>
                         </div>
                     </div>
