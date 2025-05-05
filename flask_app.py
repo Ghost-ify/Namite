@@ -504,6 +504,15 @@ DASHBOARD_HTML = """
                     </div>
                     <div class="card-body">
                         {% if stats.cookie_status %}
+                        <div class="alert alert-info mb-3">
+                            {% set working_cookies = stats.cookie_status|selectattr('success_rate', '>=', 80)|list|length %}
+                            {% set degraded_cookies = stats.cookie_status|selectattr('success_rate', '>=', 50)|selectattr('success_rate', '<', 80)|list|length %}
+                            {% set poor_cookies = stats.cookie_status|selectattr('success_rate', '<', 50)|list|length %}
+                            <strong>Cookie Status Summary:</strong><br>
+                            ✅ Working well: {{ working_cookies }} cookies (80%+ success rate)<br>
+                            ⚠️ Degraded: {{ degraded_cookies }} cookies (50-80% success rate)<br>
+                            ❌ Poor performance: {{ poor_cookies }} cookies (<50% success rate)
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>
@@ -512,6 +521,7 @@ DASHBOARD_HTML = """
                                         <th>Success Rate</th>
                                         <th>Status</th>
                                         <th>Last Used</th>
+                                        <th>Success/Error</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -542,6 +552,7 @@ DASHBOARD_HTML = """
                                             {% endif %}
                                         </td>
                                         <td><small>{{ status.last_used_ago }}</small></td>
+                                        <td><small>{{ status.success_count }}/{{ status.error_count }}</small></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
