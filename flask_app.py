@@ -510,12 +510,20 @@ DASHBOARD_HTML = """
                     <div class="card-body">
                         {% if stats.cookie_status %}
                         <div class="alert alert-info mb-3">
-                            {% set working_cookies = [cookie for cookie in stats.cookie_status if cookie.success_rate|float >= 80.0]|length %}
-                            {% set degraded_cookies = [cookie for cookie in stats.cookie_status if cookie.success_rate|float >= 50.0 and cookie.success_rate|float < 80.0]|length %}
-                            {% set poor_cookies = [cookie for cookie in stats.cookie_status if cookie.success_rate|float < 50.0]|length %}
+                            {% with %}
+                            {% set counts = {"working": 0, "degraded": 0, "poor": 0} %}
+                            {% for cookie in stats.cookie_status %}
+                                {% if cookie.success_rate >= 80.0 %}
+                                    {% set _ = counts.update({"working": counts.working + 1}) %}
+                                {% elif cookie.success_rate >= 50.0 %}
+                                    {% set _ = counts.update({"degraded": counts.degraded + 1}) %}
+                                {% else %}
+                                    {% set _ = counts.update({"poor": counts.poor + 1}) %}
+                                {% endif %}
+                            {% endfor %}
                             <strong>Cookie Status Summary:</strong><br>
-                            ✅ Working well: {{ working_cookies }} cookies (80%+ success rate)<br>
-                            ⚠️ Degraded: {{ degraded_cookies }} cookies (50-80% success rate)<br>
+                            ✅ Working well: {{ counts.working }} cookies (80%+ success rate)<br>
+                            ⚠️ Degraded: {{ counts.degraded }} cookies (50-80% success rate)<br>
                             ❌ Poor performance: {{ poor_cookies }} cookies (<50% success rate)
                         </div>
                         <div class="table-responsive">
