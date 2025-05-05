@@ -23,8 +23,8 @@ logger = logging.getLogger('roblox_username_bot')
 
 # Constants
 MIN_SUCCESS_THRESHOLD = 0.05   # 5% minimum success rate before adaptation
-MAX_PARALLEL_CHECKS = 200      # Maximum allowed parallel checks
-MIN_PARALLEL_CHECKS = 5        # Minimum allowed parallel checks
+MAX_PARALLEL_CHECKS = 1        # Force single check mode
+MIN_PARALLEL_CHECKS = 1        # Force single check mode
 SUCCESS_WINDOW_SIZE = 100      # Number of checks to consider for success rate calculation
 ERROR_THRESHOLD = 5            # Number of consecutive errors before cookie switching
 LEARNING_RATE = 0.1           # How quickly the system adapts (0.0-1.0)
