@@ -61,26 +61,31 @@ init_database()
 if __name__ == "__main__":
     logger.info("Starting Roblox Username Discord Bot")
     
-    # Check if ROBLOX_COOKIE or ROBLOX_COOKIE1, ROBLOX_COOKIE2, etc. are set
+    # Check for all Roblox cookies (no arbitrary limit)
     roblox_cookies = []
+    
+    # First check for the main ROBLOX_COOKIE
     main_cookie = os.environ.get("ROBLOX_COOKIE", "")
     if main_cookie and len(main_cookie) > 50:  # Basic validation
         roblox_cookies.append(main_cookie)
+        logger.info(f"Found valid cookie ROBLOX_COOKIE (length: {len(main_cookie)})")
     
-    # Check for all numbered cookies (up to 10 to prevent infinite loop)
-    for cookie_index in range(1, 11):
+    # Then check for all numbered cookies
+    cookie_index = 1
+    while True:
         cookie_name = f"ROBLOX_COOKIE{cookie_index}"
         cookie = os.environ.get(cookie_name, "")
         if not cookie:
             # No more cookies found with this pattern
-            continue
+            break
             
         if len(cookie) < 50:  # Basic validation
             logger.warning(f"Found {cookie_name} but it seems invalid (length: {len(cookie)})")
-            continue
+        else:
+            logger.info(f"Found valid cookie {cookie_name} (length: {len(cookie)})")
+            roblox_cookies.append(cookie)
             
-        logger.info(f"Found valid cookie {cookie_name} (length: {len(cookie)})")
-        roblox_cookies.append(cookie)
+        cookie_index += 1
     
     # Count all available cookies in environment variables (for verification)
     cookie_count = 0
