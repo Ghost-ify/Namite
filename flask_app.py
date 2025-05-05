@@ -510,9 +510,9 @@ DASHBOARD_HTML = """
                     <div class="card-body">
                         {% if stats.cookie_status %}
                         <div class="alert alert-info mb-3">
-                            {% set working_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', 'float')|selectattr('success_rate', '>=', 80.0)|list|length %}
-                            {% set degraded_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', 'float')|selectattr('success_rate', '>=', 50.0)|selectattr('success_rate', '<', 80.0)|list|length %}
-                            {% set poor_cookies = stats.cookie_status|selectattr('success_rate')|selectattr('success_rate', 'float')|selectattr('success_rate', '<', 50.0)|list|length %}
+                            {% set working_cookies = stats.cookie_status|selectattr('success_rate', 'defined')|selectattr('success_rate', 'number')|rejectattr('success_rate', 'none')|selectattr('success_rate', '>=', 80.0)|list|length %}
+                            {% set degraded_cookies = stats.cookie_status|selectattr('success_rate', 'defined')|selectattr('success_rate', 'number')|rejectattr('success_rate', 'none')|selectattr('success_rate', '>=', 50.0)|selectattr('success_rate', '<', 80.0)|list|length %}
+                            {% set poor_cookies = stats.cookie_status|selectattr('success_rate', 'defined')|selectattr('success_rate', 'number')|rejectattr('success_rate', 'none')|selectattr('success_rate', '<', 50.0)|list|length %}
                             <strong>Cookie Status Summary:</strong><br>
                             ✅ Working well: {{ working_cookies }} cookies (80%+ success rate)<br>
                             ⚠️ Degraded: {{ degraded_cookies }} cookies (50-80% success rate)<br>
