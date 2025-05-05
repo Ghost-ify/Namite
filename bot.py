@@ -63,7 +63,7 @@ class RobloxUsernameBot:
         self.task_running = False
         
         # Number of parallel username checks to perform
-        self.parallel_checks = 5
+        self.parallel_checks = 10  # Increased from 5 to 10 for better performance
         
         # Semaphore to limit concurrent API requests
         self.semaphore = None

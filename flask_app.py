@@ -154,6 +154,38 @@ DASHBOARD_HTML = """
             font-weight: bold;
             color: #ffc107;
         }
+        
+        /* Roblox username chat color classes */
+        .username-color-0 { color: #E74C3C; } /* Red */
+        .username-color-1 { color: #3498DB; } /* Blue */
+        .username-color-2 { color: #2ECC71; } /* Green */
+        .username-color-3 { color: #9B59B6; } /* Purple */
+        .username-color-4 { color: #E67E22; } /* Orange */
+        .username-color-5 { color: #F1C40F; } /* Yellow */
+        .username-color-6 { color: #FF9FF3; } /* Pink */
+        .username-color-7 { color: #A47D5E; } /* Almond */
+        
+        /* Copy button styling */
+        .copy-icon {
+            margin-left: 5px;
+            font-size: 0.8em;
+            opacity: 0.6;
+        }
+        span[onclick] {
+            transition: all 0.2s ease;
+        }
+        span[onclick]:hover {
+            background-color: #343a40;
+            transform: scale(1.05);
+        }
+        .copy-success {
+            animation: copy-flash 1s;
+        }
+        @keyframes copy-flash {
+            0% { background-color: #343a40; }
+            50% { background-color: #28a745; }
+            100% { background-color: #343a40; }
+        }
         .stats-number {
             font-size: 1.5rem;
             font-weight: bold;
@@ -181,6 +213,41 @@ DASHBOARD_HTML = """
         }
     </style>
     <meta http-equiv="refresh" content="60">
+    <script>
+        // Copy to clipboard functionality
+        function copyToClipboard(text) {
+            // Create a temporary input element
+            const input = document.createElement('input');
+            input.setAttribute('value', text);
+            document.body.appendChild(input);
+            input.select();
+            
+            // Execute copy command
+            document.execCommand('copy');
+            
+            // Clean up
+            document.body.removeChild(input);
+            
+            // Visual feedback
+            const elements = document.querySelectorAll('span[onclick="copyToClipboard(\'' + text + '\')"]');
+            elements.forEach(element => {
+                element.classList.add('copy-success');
+                setTimeout(() => {
+                    element.classList.remove('copy-success');
+                }, 1000);
+                
+                // Change icon temporarily
+                const icon = element.querySelector('.copy-icon');
+                if (icon) {
+                    const originalText = icon.innerHTML;
+                    icon.innerHTML = '✅';
+                    setTimeout(() => {
+                        icon.innerHTML = originalText;
+                    }, 1000);
+                }
+            });
+        }
+    </script>
 </head>
 <body data-bs-theme="dark">
     <div class="container">
@@ -347,7 +414,14 @@ DASHBOARD_HTML = """
                                         {% for username in recent_usernames %}
                                             <tr>
                                                 <td {% if username.username|length <= 4 %}class="valuable-username"{% endif %}>
-                                                    {{ username.username }}
+                                                    <!-- Show username in its chat color with CSS -->
+                                                    <span style="background-color: #f8f9fa; border-radius: 4px; padding: 3px 6px; cursor: pointer;" 
+                                                          onclick="copyToClipboard('{{ username.username }}')" 
+                                                          title="Click to copy"
+                                                          class="username-color-{{ username.color_class }}">
+                                                        <code>{{ username.username }}</code>
+                                                        <i class="copy-icon">📋</i>
+                                                    </span>
                                                 </td>
                                                 <td>{{ username.chat_color }}</td>
                                                 <td>{{ username.username|length }}</td>
@@ -477,6 +551,9 @@ def dashboard():
         username['checked_at'] = username['checked_at'].strftime('%Y-%m-%d %H:%M:%S')
         color = get_chat_color(username['username'])
         username['chat_color'] = f"{color['emoji']} {color['name']}"
+        # Add color class for CSS styling (0-7 index based on color name)
+        color_index = chat_colors.index(color)
+        username['color_class'] = str(color_index)
     
     # Get generator settings
     min_length = os.environ.get('MIN_LENGTH', '3') 
