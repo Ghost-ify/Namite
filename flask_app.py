@@ -544,29 +544,30 @@ DASHBOARD_HTML = """
                                         <td>{{ loop.index }}</td>
                                         <td>
                                             <div class="progress" style="height: 15px;">
-                                                <div class="progress-bar {% if status.success_rate >= 80 %}bg-success{% elif status.success_rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                {% set success_rate = status.success_rate|float %}
+                                                <div class="progress-bar {% if success_rate >= 80.0 %}bg-success{% elif success_rate >= 50.0 %}bg-warning{% else %}bg-danger{% endif %}" 
                                                      role="progressbar" 
-                                                     style="width: {{ status.success_rate }}%"
-                                                     aria-valuenow="{{ status.success_rate }}" 
+                                                     style="width: {{ success_rate }}%"
+                                                     aria-valuenow="{{ success_rate }}" 
                                                      aria-valuemin="0" 
                                                      aria-valuemax="100">
-                                                    {{ "%.1f"|format(status.success_rate) }}%
+                                                    {{ "%.1f"|format(success_rate) }}%
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            {% if status.cooldown_until > current_time %}
+                                            {% if status.cooldown_until|float > current_time|float %}
                                             <span class="badge bg-warning">Cooldown</span>
-                                            {% elif status.success_rate >= 80 %}
+                                            {% elif success_rate >= 80.0 %}
                                             <span class="badge bg-success">Healthy</span>
-                                            {% elif status.success_rate >= 50 %}
+                                            {% elif success_rate >= 50.0 %}
                                             <span class="badge bg-warning">Degraded</span>
                                             {% else %}
                                             <span class="badge bg-danger">Poor</span>
                                             {% endif %}
                                         </td>
                                         <td><small>{{ status.last_used_ago }}</small></td>
-                                        <td><small>{{ status.success_count }}/{{ status.error_count }}</small></td>
+                                        <td><small>{{ status.get('success_count', 0) }}/{{ status.get('error_count', 0) }}</small></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
