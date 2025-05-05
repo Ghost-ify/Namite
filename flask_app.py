@@ -337,6 +337,7 @@ DASHBOARD_HTML = """
                                     <thead>
                                         <tr>
                                             <th>Username</th>
+                                            <th>Chat Color</th>
                                             <th>Length</th>
                                             <th>Found At</th>
                                             <th>Action</th>
@@ -348,6 +349,7 @@ DASHBOARD_HTML = """
                                                 <td {% if username.username|length <= 4 %}class="valuable-username"{% endif %}>
                                                     {{ username.username }}
                                                 </td>
+                                                <td>{{ username.chat_color }}</td>
                                                 <td>{{ username.username|length }}</td>
                                                 <td>{{ username.checked_at }}</td>
                                                 <td>

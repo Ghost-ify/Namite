@@ -711,7 +711,8 @@ class RobloxUsernameBot:
         Determine the Roblox chat color for a username.
         Colors cycle in this order: Red, Blue, Green, Purple, Orange, Yellow, Pink, Almond
         
-        This implementation is based on the actual Roblox color algorithm.
+        This implementation is based on the official Roblox source code from:
+        https://github.com/Roblox/Core-Scripts/blob/master/CoreScriptsRoot/Modules/Chat.lua
         
         Args:
             username (str): The Roblox username to analyze
@@ -719,14 +720,14 @@ class RobloxUsernameBot:
         Returns:
             dict: Dictionary with color name and emoji
         """
-        # Implementation based on actual Roblox code
-        def get_name_value(name):
+        # Direct port from Roblox's official Lua code
+        def get_name_value(pName):
             value = 0
-            for index in range(1, len(name) + 1):
-                c_value = ord(name[index - 1])
-                reverse_index = len(name) - index + 1
+            for index in range(1, len(pName) + 1):
+                c_value = ord(pName[index - 1])
+                reverse_index = len(pName) - index + 1
                 
-                if len(name) % 2 == 1:
+                if len(pName) % 2 == 1:
                     reverse_index = reverse_index - 1
                     
                 if reverse_index % 4 >= 2:
@@ -736,9 +737,9 @@ class RobloxUsernameBot:
             
             return value
         
-        # Calculate name value and get color index
-        name_value = get_name_value(username)
+        # Compute name color (direct port from official Roblox code)
         color_offset = 0
+        name_value = get_name_value(username)
         color_index = ((name_value + color_offset) % len(self.chat_colors))
         
         return self.chat_colors[color_index]
