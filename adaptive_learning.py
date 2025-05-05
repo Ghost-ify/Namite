@@ -294,36 +294,48 @@ class AdaptiveLearning:
     def calculate_dynamic_values(self):
         """
         Calculate dynamic values based on the number of available cookies.
-        
-        This method adjusts the parallel checks and other parameters based on 
-        the number of cookies available to maximize the efficiency.
-        
-        Returns:
-            int: The optimal number of parallel checks
+        Aggressively scales based on cookie performance and count.
         """
         cookie_count = len(self.cookies)
         if cookie_count == 0:
-            # If no cookies, use minimum values
             return MIN_PARALLEL_CHECKS
-            
-        # Calculate optimal checks with smart scaling
-        # More cookies = more checks, but with diminishing returns
-        base_multiplier = math.log(cookie_count + 1, 2)  # Logarithmic scaling
-        performance_factor = self._calculate_cookie_performance()
+
+        # Calculate performance metrics for each cookie
+        good_cookies = 0
+        total_success_rate = 0
         
-        optimal_checks = int(
-            BASE_CHECKS_PER_COOKIE * 
-            base_multiplier * 
-            performance_factor * 
-            CHECKS_SCALING_FACTOR
-        )
+        for status in self.cookie_status:
+            total_requests = status['success_count'] + status['error_count']
+            if total_requests > 0:
+                success_rate = status['success_count'] / total_requests
+                if success_rate > 0.9:  # 90% success rate threshold
+                    good_cookies += 1
+                total_success_rate += success_rate
+
+        avg_success_rate = total_success_rate / cookie_count if cookie_count > 0 else 0
         
-        # Cap maximum based on cookie count to prevent overload
-        max_per_cookie = 8  # Maximum requests per cookie
-        cookie_based_max = cookie_count * max_per_cookie
+        # Dynamic scaling based on performance
+        base_per_cookie = 12 if avg_success_rate > 0.95 else (
+            10 if avg_success_rate > 0.9 else (
+            8 if avg_success_rate > 0.8 else 6))
+
+        # Aggressive but safe scaling
+        scaling_factor = (1 + (good_cookies / cookie_count)) * (1 + math.log(cookie_count + 1, 2))
         
-        optimal_checks = min(optimal_checks, cookie_based_max)
-        logger.info(f"Calculated optimal checks: {optimal_checks} for {cookie_count} cookies")
+        # Calculate target requests/second per cookie
+        optimal_checks = int(base_per_cookie * cookie_count * scaling_factor)
+        
+        # Safety caps
+        min_checks = max(MIN_PARALLEL_CHECKS, cookie_count * 3)  # At least 3 checks per cookie
+        max_checks = min(MAX_PARALLEL_CHECKS, cookie_count * 15)  # Max 15 checks per cookie
+        
+        optimal_checks = max(min_checks, min(optimal_checks, max_checks))
+        
+        # Adjust interval dynamically
+        self.check_interval = max(0.05, 0.2 / cookie_count)  # Minimum 50ms between batches
+        
+        logger.info(f"Optimized for {cookie_count} cookies: {optimal_checks} parallel checks, {self.check_interval:.3f}s interval")
+        return optimal_checks
         
     def _calculate_cookie_performance(self) -> float:
         """Calculate performance factor based on cookie success rates."""
