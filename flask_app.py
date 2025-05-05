@@ -364,7 +364,7 @@ DASHBOARD_HTML = """
                                     </div>
                                 </div>
                             </td>
-                            <td>{{ ((status.success_count + status.error_count) / 24)|round(1) }}</td>
+                            <td>{{ ((status.success_count + status.error_count) / (24 * 60))|round(1) }}</td>
                             <td>
                                 {% if status.cooldown_until|float > current_time|float %}
                                     <span class="badge bg-warning">Cooldown</span>
