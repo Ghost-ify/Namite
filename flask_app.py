@@ -629,9 +629,11 @@ DASHBOARD_HTML = """
                                             </div>
                                         </td>
                                         <td>
-                                            {% if success_rate >= 20.0 %}
+                                            {% if status.cooldown_until|float > current_time|float %}
+                                            <span class="badge bg-warning">Cooldown</span>
+                                            {% elif status.error_count / (status.success_count + status.error_count) * 100 < 20 %}
                                             <span class="badge bg-success">Healthy</span>
-                                            {% elif success_rate >= 10.0 %}
+                                            {% elif status.error_count / (status.success_count + status.error_count) * 100 < 50 %}
                                             <span class="badge bg-warning">Degraded</span>
                                             {% else %}
                                             <span class="badge bg-danger">Poor</span>
