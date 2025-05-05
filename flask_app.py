@@ -332,8 +332,8 @@ DASHBOARD_HTML = """
                         <div class="mt-2">
                             <h6>Performance Metrics</h6>
                             <div class="d-flex justify-content-between">
-                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format((stats.total_checked / ((current_time|float - stats.start_time|float) / 60))) }}</span></div>
-                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((stats.total_checked / ((current_time|float - stats.start_time|float) / 60)) / stats.cookie_count) }}</span></div>
+                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(stats.total_checked / max(1, ((current_time|float - stats.start_time|float) / 60))) }}</span></div>
+                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((stats.total_checked / max(1, ((current_time|float - stats.start_time|float) / 60))) / max(1, stats.cookie_count)) }}</span></div>
                             </div>
                         </div>
                     </div>
