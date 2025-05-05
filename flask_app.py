@@ -334,10 +334,14 @@ DASHBOARD_HTML = """
                             <div class="d-flex justify-content-between">
                                 {% set total_checks = namespace(value=0) %}
                                 {% set total_checks = namespace(value=0) %}
+                                {% set total_checks = namespace(value=0) %}
                                 {% for status in stats.cookie_status %}
-                                    {% set total_checks.value = total_checks.value + status.success_count|default(0) + status.error_count|default(0) %}
+                                    {% set success = status.success_count|default(0) %}
+                                    {% set errors = status.error_count|default(0) %}
+                                    {% set total_checks.value = total_checks.value + success + errors %}
                                 {% endfor %}
-                                <div>Total Checks: <span class="badge bg-success">{{ total_checks.value }}</span></div>
+                                <div>Checks Last 5m: <span class="badge bg-success">{{ total_checks.value }}</span></div>
+                                <div>Per Minute: <span class="badge bg-primary">{{ (total_checks.value / 5)|round(1) }}</span></div>
                                 <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
                             </div>
                         </div>
