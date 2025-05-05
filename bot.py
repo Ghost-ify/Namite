@@ -548,20 +548,33 @@ class RobloxUsernameBot:
                         if is_valuable:
                             # Create embed for valuable username
                             embed = discord.Embed(
-                                title="💎 Valuable Username Found! 💎",
-                                description=f"**{username}** {chat_color['emoji']}",
+                                title="💎 Rare Short Username Found! 💎",
+                                description=f"**`{username}`** {chat_color['emoji']}",
                                 color=0xffd700  # Gold color
                             )
                             
-                            embed.add_field(name="📏 Length", value=str(username_length), inline=True)
-                            embed.add_field(name="🔣 Contains Underscore", value=str('_' in username), inline=True)
-                            embed.add_field(name=f"{chat_color['emoji']} Chat Color", value=chat_color['name'], inline=True)
-                            embed.add_field(name="💎 Valuable", value="Yes", inline=True)
+                            # Add username in a clear, copyable format
+                            embed.add_field(name="📋 Copy Username", value=f"`{username}`", inline=False)
                             
-                            # Add timestamp and claim information
+                            # Add details in a more organized way
+                            details_value = (
+                                f"📏 **Length:** {username_length} characters\n"
+                                f"🔣 **Underscore:** {'Yes' if '_' in username else 'No'}\n"
+                                f"{chat_color['emoji']} **Chat Color:** {chat_color['name']}\n"
+                                f"💎 **Rarity:** High (3-4 character usernames are rare)"
+                            )
+                            embed.add_field(name="📊 Details", value=details_value, inline=False)
+                            
+                            # Add timestamp and claim information with clearer instructions
+                            claim_instructions = (
+                                "1️⃣ Go to https://www.roblox.com/signup\n"
+                                "2️⃣ Enter this username exactly as shown\n"
+                                "3️⃣ Complete signup before someone else claims it!\n"
+                                "⚠️ **Act quickly!** Rare usernames are claimed fast!"
+                            )
                             embed.add_field(
-                                name="🔍 How to Claim",
-                                value="Go to https://www.roblox.com/signup and enter this username before someone else claims it!",
+                                name="🔍 How to Claim This Username",
+                                value=claim_instructions,
                                 inline=False
                             )
                             
@@ -699,55 +712,83 @@ class RobloxUsernameBot:
         current_time = datetime.now()
         usernames_count = len(self.pending_usernames)
         
-        # Create the embed
+        # Create the embed with a more attractive title and description
         embed = discord.Embed(
-            title=f"✨ Batch of {usernames_count} Available Usernames Found! ✨",
-            description="The following Roblox usernames are currently available for registration:",
+            title=f"✨ {usernames_count} Available Roblox Usernames! ✨",
+            description=(
+                "**Here are the latest available usernames our bot found:**\n"
+                "• Usernames are sorted by length (shortest first)\n"
+                "• Code format makes them easy to copy\n"
+                "• Each username shows its Roblox chat color"
+            ),
             color=0x00ff00  # Green
         )
         
         # Sort usernames by length (shorter first as they're more valuable)
         sorted_usernames = sorted(self.pending_usernames, key=lambda x: x['length'])
         
-        # List all usernames with their properties
-        username_list = ""
-        for i, username_data in enumerate(sorted_usernames):
-            username = username_data['username']
+        # Group usernames by length for better organization
+        usernames_by_length = {}
+        for username_data in sorted_usernames:
             length = username_data['length']
-            has_underscore = username_data['has_underscore']
-            
-            # Add formatting with chat color - optimized for easy copying
-            chat_color = self.get_chat_color(username)
-            special_marker = "🔹" if has_underscore else "🔸"
-            # Make username stand out with code block for easy copying
-            username_list += f"{special_marker} **`{username}`** {chat_color['emoji']} ({chat_color['name']})\n"
-            
-            # Break into multiple fields if list is too long
-            if (i + 1) % 10 == 0 or i == len(sorted_usernames) - 1:
-                embed.add_field(
-                    name=f"Available Usernames {i-9 if i >= 9 else 0}-{i+1}",
-                    value=username_list,
-                    inline=False
-                )
-                username_list = ""
+            if length not in usernames_by_length:
+                usernames_by_length[length] = []
+            usernames_by_length[length].append(username_data)
         
-        # Add claim instructions
+        # Display usernames grouped by length
+        for length in sorted(usernames_by_length.keys()):
+            username_list = ""
+            usernames = usernames_by_length[length]
+            
+            for username_data in usernames:
+                username = username_data['username']
+                has_underscore = username_data['has_underscore']
+                
+                # Add formatting with chat color - optimized for easy copying
+                chat_color = self.get_chat_color(username)
+                special_marker = "🔹" if has_underscore else "🔸"
+                # Make username stand out with code block for easy copying
+                username_list += f"{special_marker} **`{username}`** {chat_color['emoji']} ({chat_color['name']})\n"
+            
+            # Add this length group as a field
+            rarity = "⭐⭐⭐ RARE!" if length <= 4 else ("⭐⭐ Uncommon" if length <= 6 else "⭐ Common")
+            embed.add_field(
+                name=f"{length}-Character Usernames ({rarity})",
+                value=username_list or "None found in this category",
+                inline=False
+            )
+        
+        # Add claim instructions with a clearer format
+        claim_instructions = (
+            "1️⃣ Go to https://www.roblox.com/signup\n"
+            "2️⃣ Copy one of the usernames above\n"
+            "3️⃣ Paste it into the username field\n"
+            "4️⃣ Complete registration before someone else claims it!\n\n"
+            "⚠️ **Remember:** Shorter usernames are claimed faster!"
+        )
         embed.add_field(
-            name="🔍 How to Claim",
-            value="Go to https://www.roblox.com/signup and enter any of these usernames before someone else claims them!",
+            name="🔍 How to Claim a Username",
+            value=claim_instructions,
             inline=False
         )
         
-        # Add statistics
+        # Add statistics with more detail
+        cookies_count = len(getattr(self, 'cookies', [])) or 1  # Default to 1 if no cookies attribute
         success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
+        stats_value = (
+            f"✅ **Found:** {self.stats['available_found']} available usernames\n"
+            f"🔍 **Checked:** {self.stats['total_checked']} total usernames\n"
+            f"📊 **Success Rate:** {success_rate:.2f}%\n"
+            f"⚙️ **Using:** {cookies_count} cookie(s) for API requests"
+        )
         embed.add_field(
-            name="📊 Statistics",
-            value=f"Total Available Found: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
+            name="📈 Bot Statistics",
+            value=stats_value,
             inline=False
         )
         
         # Set footer with timestamp and 3-day cooldown note
-        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')} • Batch generated at {current_time.strftime('%Y-%m-%d %H:%M:%S')} • Usernames will not be rechecked for 3 days")
+        embed.set_footer(text=f"Bot running since {self.stats['start_time'].strftime('%Y-%m-%d %H:%M')} • Batch generated at {current_time.strftime('%Y-%m-%d %H:%M:%S')} • Usernames won't be rechecked for 3 days")
         
         # Send the batch message
         logger.info(f"Sending batch of {usernames_count} available usernames")
