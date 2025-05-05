@@ -946,6 +946,16 @@ class RobloxUsernameBot:
         if not self.pending_usernames:
             return
 
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_usernames = []
+        for username_data in self.pending_usernames:
+            if username_data['username'] not in seen:
+                seen.add(username_data['username'])
+                unique_usernames.append(username_data)
+        
+        self.pending_usernames = unique_usernames
+
         # Create a batch embed
         current_time = datetime.now()
         usernames_count = len(self.pending_usernames)
