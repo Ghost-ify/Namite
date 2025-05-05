@@ -198,197 +198,125 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Username Bot - Dashboard</title>
+    <title>Username Bot Dashboard</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <style>
         body {
-            padding: 2rem;
+            padding: 1rem;
             color: #e6e6e6;
             background-color: #1c1c1c;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
         .app-container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
         }
-        .stat-card {
+        .dashboard-card {
             background: #2d2d2d;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        .stat-grid {
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
-            margin-bottom: 1.5rem;
         }
-        .stat-item {
+        .stat-box {
             background: #363636;
             padding: 1.25rem;
-            border-radius: 6px;
+            border-radius: 8px;
             text-align: center;
         }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 600;
             color: #00ff9d;
+            margin-bottom: 0.5rem;
         }
         .stat-label {
             color: #a6a6a6;
             font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .progress {
-            height: 0.75rem;
-            background-color: #363636;
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
-        .progress-bar {
-            transition: width 0.3s ease;
+        .status-healthy { background-color: #00ff9d33; color: #00ff9d; }
+        .status-degraded { background-color: #ffd70033; color: #ffd700; }
+        .status-error { background-color: #ff4d4d33; color: #ff4d4d; }
+        .cookie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
         }
-        .cookie-status {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem;
-            border-radius: 6px;
-            margin-bottom: 0.5rem;
+        .cookie-card {
             background: #363636;
+            padding: 1rem;
+            border-radius: 8px;
         }
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 1rem;
-        }
-        .status-healthy { background-color: #00ff9d; }
-        .status-degraded { background-color: #ffd700; }
-        .status-poor { background-color: #ff4d4d; }
     </style>
-    <meta http-equiv="refresh" content="60">
+    <meta http-equiv="refresh" content="30">
 </head>
 <body>
     <div class="app-container">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="m-0">Roblox Username Bot Analytics</h1>
-                <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
-                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-                        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-                    </svg>
-                    Refresh
-                </button>
+        <div class="dashboard-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="m-0">Username Bot Status</h2>
+                <span class="status-badge {{ 'status-healthy' if stats.api_status == 'Healthy' else 'status-degraded' if stats.api_status == 'Degraded' else 'status-error' }}">
+                    {{ stats.api_status }}
+                </span>
             </div>
-            <div class="text-muted">Last updated: {{ current_time }}</div>
         </div>
 
-        <!-- Performance Stats -->
-        <div class="stat-card">
-            <h4>Performance Metrics</h4>
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-value">{{ stats.total_checked }}</div>
-                    <div class="stat-label">Total Checks</div>
+        <div class="dashboard-card">
+            <h4 class="mb-3">Performance Overview</h4>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-number">{{ stats.checks_last_24h }}</div>
+                    <div class="stat-label">Checks/Min</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value">{{ stats.available_found }}</div>
-                    <div class="stat-label">Available Found</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{{ "%.1f"|format(stats.success_rate) }}%</div>
+                <div class="stat-box">
+                    <div class="stat-number">{{ "%.1f"|format(stats.success_rate) }}%</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value">{{ stats.checks_last_24h }}</div>
-                    <div class="stat-label">24h Checks</div>
+                <div class="stat-box">
+                    <div class="stat-number">{{ stats.available_found }}</div>
+                    <div class="stat-label">Names Found</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">{{ stats.cookie_count }}</div>
+                    <div class="stat-label">Active Cookies</div>
                 </div>
             </div>
         </div>
 
-        <!-- API Status -->
-        <div class="stat-card">
-            <h4>System Health</h4>
-            <div class="cookie-status">
-                <div class="status-indicator {{ 'status-healthy' if stats.api_status == 'Healthy' else 'status-degraded' if stats.api_status == 'Degraded' else 'status-poor' }}"></div>
-                <div>API Status: {{ stats.api_status }}</div>
-            </div>
-            <div class="progress mb-3">
-                <div class="progress-bar bg-success" style="width: {{ stats.success_rate }}%"></div>
-            </div>
-        </div>
-
-        <!-- Cookie Performance -->
-        <div class="stat-card">
-            <h4>Cookie Performance</h4>
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="alert alert-info">
-                        <h5>Cookie Health Overview</h5>
-                        <div class="d-flex justify-content-between">
-                            <div>Total Requests: <span class="badge bg-primary">{{ stats.total_checked }}</span></div>
-                            <div>Error Rate: <span class="badge bg-{{ 'success' if (stats.errors_count / stats.total_checked * 100) < 20 else 'warning' if (stats.errors_count / stats.total_checked * 100) < 50 else 'danger' }}">{{ "%.1f"|format(stats.errors_count / stats.total_checked * 100) }}%</span></div>
-                            <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
+        <div class="dashboard-card">
+            <h4 class="mb-3">Cookie Status</h4>
+            <div class="cookie-grid">
+                        {% for status in stats.cookie_status %}
+                    {% set error_rate = status.error_count / max(1, (status.error_count + status.success_count)) * 100 %}
+                    {% set checks_per_min = ((status.success_count|default(0) + status.error_count|default(0)) / 5)|round(1) %}
+                    <div class="cookie-card">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Cookie #{{ loop.index }}</strong>
+                            <span class="status-badge {{ 'status-healthy' if error_rate < 20 else 'status-degraded' if error_rate < 50 else 'status-error' }}">
+                                {{ "%.1f"|format(error_rate) }}% Errors
+                            </span>
                         </div>
-                        <div class="mt-2">
-                            <h6>Performance Metrics (Last 5 Minutes)</h6>
-                            <div class="d-flex justify-content-between">
-                                {% set stats_calc = namespace(success=0, errors=0, total=0) %}
-                                {% for status in stats.cookie_status %}
-                                    {% set stats_calc.success = stats_calc.success + status.success_count|default(0) %}
-                                    {% set stats_calc.errors = stats_calc.errors + status.error_count|default(0) %}
-                                {% endfor %}
-                                {% set stats_calc.total = stats_calc.success + stats_calc.errors %}
-                                {% set success_rate = ((stats_calc.success / stats_calc.total * 100) if stats_calc.total > 0 else 0)|round(1) %}
-                                {% set checks_per_min = stats_calc.total %}
-                                <div>Checks/Min: <span class="badge bg-warning">{{ checks_per_min }}</span></div>
-                                <div>Success Rate: <span class="badge bg-primary">{{ success_rate }}%</span></div>
-                                <div>Active Cookies: <span class="badge bg-info">{{ stats.cookie_count }}</span></div>
-                                <div>Total Checks: <span class="badge bg-success">{{ stats_calc.total }}</span></div>
-                            </div>
+                        <div class="d-flex justify-content-between text-muted">
+                            <small>{{ checks_per_min }} checks/min</small>
+                            <small>Last used: {{ status.last_used_ago }}</small>
                         </div>
                     </div>
-                </div>
+                {% endfor %}
             </div>
-
-            <table class="table table-dark table-striped">
-                <thead>
-                    <tr>
-                        <th>Cookie #</th>
-                        <th>Error Rate</th>
-                        <th>Checks/min</th>
-                        <th>Status</th>
-                        <th>Last Error</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for status in stats.cookie_status %}
-                        {% set error_rate = status.error_count / max(1, (status.error_count + status.success_count)) * 100 %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar bg-{{ 'success' if error_rate < 20 else 'warning' if error_rate < 50 else 'danger' }}" 
-                                         role="progressbar" 
-                                         style="width: {{ error_rate }}%">
-                                        {{ "%.1f"|format(error_rate) }}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td>{{ ((status.success_count|default(0) + status.error_count|default(0)) / 5)|round(1) }}</td>
-                            <td>
-                                {% if error_rate < 20 %}
-                                    <span class="badge bg-success">Healthy</span>
-                                {% elif error_rate < 50 %}
-                                    <span class="badge bg-warning">Degraded</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Poor</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ status.last_used_ago }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
 </body>
