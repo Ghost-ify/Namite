@@ -23,6 +23,31 @@ app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET', 'dev-key-for-testing
 def get_bot_statistics():
     """Get statistics about the bot's operations from the database."""
     try:
+        # Get cookie information from roblox_api
+        from roblox_api import adaptive_system
+        current_time = time.time()
+        
+        cookie_status = []
+        if adaptive_system and adaptive_system.cookie_status:
+            for status in adaptive_system.cookie_status:
+                total = status['success_count'] + status['error_count']
+                success_rate = (status['success_count'] / max(1, total)) * 100
+                
+                # Calculate time since last use
+                time_diff = current_time - status['last_used']
+                if time_diff < 60:
+                    last_used_ago = f"{int(time_diff)}s ago"
+                elif time_diff < 3600:
+                    last_used_ago = f"{int(time_diff/60)}m ago"
+                else:
+                    last_used_ago = f"{int(time_diff/3600)}h ago"
+                
+                cookie_status.append({
+                    'success_rate': success_rate,
+                    'cooldown_until': status['cooldown_until'],
+                    'last_used_ago': last_used_ago
+                })
+        
         conn = get_db_connection()
         if not conn:
             return {
@@ -34,7 +59,10 @@ def get_bot_statistics():
                 "errors_last_24h": 0,
                 "success_rate": 0,
                 "success_rate_24h": 0,
-                "api_status": "Unknown"
+                "api_status": "Unknown",
+                "cookie_count": len(cookie_status),
+                "cookie_status": cookie_status,
+                "current_time": current_time
             }
             
         cursor = conn.cursor()
@@ -468,42 +496,62 @@ DASHBOARD_HTML = """
                     </div>
                 </div>
                 
-                <!-- Configuration -->
+                <!-- Cookie Status -->
                 <div class="card stats-card">
-                    <div class="card-header">
-                        <h4>Configuration</h4>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>Cookie Status</h4>
+                        <span class="badge bg-primary">{{ stats.cookie_count }} Active</span>
                     </div>
                     <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Discord Connection</strong>
-                                    <div class="text-muted small">Bot is posting to your Discord channel</div>
-                                </div>
-                                <span class="badge bg-success">Active</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Channel ID</strong>
-                                    <div class="text-muted small">Target Discord channel</div>
-                                </div>
-                                <span class="badge bg-secondary">{{ channel_id }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Check Interval</strong>
-                                    <div class="text-muted small">Time between batch checks</div>
-                                </div>
-                                <span class="badge bg-info">{{ check_interval }}s</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>Username Length</strong>
-                                    <div class="text-muted small">Valid username character count</div>
-                                </div>
-                                <span class="badge bg-primary">3-20 characters</span>
-                            </li>
-                        </ul>
+                        {% if stats.cookie_status %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Cookie #</th>
+                                        <th>Success Rate</th>
+                                        <th>Status</th>
+                                        <th>Last Used</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for status in stats.cookie_status %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 15px;">
+                                                <div class="progress-bar {% if status.success_rate >= 80 %}bg-success{% elif status.success_rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ status.success_rate }}%"
+                                                     aria-valuenow="{{ status.success_rate }}" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100">
+                                                    {{ "%.1f"|format(status.success_rate) }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if status.cooldown_until > current_time %}
+                                            <span class="badge bg-warning">Cooldown</span>
+                                            {% elif status.success_rate >= 80 %}
+                                            <span class="badge bg-success">Healthy</span>
+                                            {% elif status.success_rate >= 50 %}
+                                            <span class="badge bg-warning">Degraded</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Poor</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><small>{{ status.last_used_ago }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            No cookie status information available
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
