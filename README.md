@@ -65,4 +65,4 @@ For example, "ROBLOX" has an Orange chat color. The algorithm considers factors 
 
 To receive pings for valuable 3-4 character usernames, update the user ID in `bot.py` (line 353/200 - look for `<@1017042087469912084>`).
 
-For more details on setting up the correct channel ID, see [CHANNEL_ID_INSTRUCTIONS.md](CHANNEL_ID_INSTRUCTIONS.md).
+For more details on setting up the correct channel ID, see [CHANNEL_ID_INSTRUCTIONS.md](CHANNEL_ID_INSTRUCTIONS.md).# Namite
