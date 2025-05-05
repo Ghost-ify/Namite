@@ -91,7 +91,9 @@ def record_username_check(username: str, is_available: bool, status_code: int, m
                     datetime.now(), is_available, status_code, message
                 )
             )
-            conn.commit()
+            # Only commit every 10 operations or for available usernames
+            if is_available or cur.rowcount % 10 == 0:
+                conn.commit()
             return True
     except Exception as e:
         logger.error(f"Database error recording username check: {str(e)}")
