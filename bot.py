@@ -315,7 +315,10 @@ class RobloxUsernameBot:
                 if length < 3 or length > 20:
                     await channel.send("⚠️ Invalid length. Usernames must be between 3 and 20 characters.")
                     return
-        
+        except ValueError:
+            await channel.send("⚠️ Invalid format. Please use a number (e.g., `4`) or range (e.g., `3-6`).")
+            return
+
         # Update the bot's generator settings for future automatic checks
         self.min_length = min_length
         self.max_length = max_length
