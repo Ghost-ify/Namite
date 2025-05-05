@@ -384,7 +384,8 @@ def dashboard():
     return render_template_string(
         DASHBOARD_HTML,
         stats=stats,
-        current_time=current_time
+        current_time=current_time,
+        max=max
     )
 
 @app.route('/health')
