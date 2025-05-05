@@ -790,12 +790,20 @@ class RobloxUsernameBot:
                             await channel.send(content=ping_message, embed=embed)
                         else:
                             # For regular usernames, add to the batch queue
-                            self.pending_usernames.append({
-                                'username': username,
-                                'length': username_length,
-                                'has_underscore': '_' in username,
-                                'timestamp': datetime.now()
-                            })
+                            # First check if this username is already in the queue to prevent duplicates
+                            already_in_queue = False
+                            for existing in self.pending_usernames:
+                                if existing['username'] == username:
+                                    already_in_queue = True
+                                    break
+                                    
+                            if not already_in_queue:
+                                self.pending_usernames.append({
+                                    'username': username,
+                                    'length': username_length,
+                                    'has_underscore': '_' in username,
+                                    'timestamp': datetime.now()
+                                })
                             
                             # If we've reached our batch size or this is the first username, schedule sending
                             if len(self.pending_usernames) >= self.batch_size:
