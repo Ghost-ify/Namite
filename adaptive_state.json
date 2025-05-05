@@ -1,0 +1,41 @@
+{
+  "length_weights": {
+    "3": 17.7147,
+    "4": 14.762250000000003,
+    "5": 16.39567559433077,
+    "6": 65.69797440566924,
+    "7": 5,
+    "8": 3,
+    "9": 2
+  },
+  "parallel_checks": 10,
+  "pattern_weights": {
+    "type:ULUULL": 1,
+    "has_underscore:False": 13,
+    "has_number:False": 8,
+    "length:6": 13,
+    "type:LNUULL": 1,
+    "has_number:True": 7,
+    "type:LULNUL": 1,
+    "type:LUULUL": 1,
+    "type:LUULLU": 1,
+    "type:LLLULL": 1,
+    "type:UU_LNL": 1,
+    "underscore_pos:2": 1,
+    "has_underscore:True": 2,
+    "type:L_LUUL": 1,
+    "underscore_pos:1": 1,
+    "type:LLULLL": 1,
+    "type:UNLNL": 1,
+    "length:5": 2,
+    "type:UUULLL": 1,
+    "type:LULUNU": 1,
+    "type:UULNLU": 1,
+    "type:ULUUUL": 1,
+    "type:NULUL": 1
+  },
+  "underscore_probability": 0.1586301047619048,
+  "numeric_probability": 0.364313180952381,
+  "uppercase_probability": 0.6811354000000001,
+  "last_updated": "2025-05-05T09:30:53.396745"
+}

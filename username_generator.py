@@ -223,7 +223,7 @@ def generate_username_with_length(min_length: int = 3, max_length: int = 6) -> s
 def generate_username() -> str:
     """
     Generate a random Roblox-style username following these rules:
-    - Length: 3-6 characters (default range for auto-checking)
+    - Adaptive length based on success rates (default 3-6 characters)
     - Allowed characters: letters (a-z, A-Z), numbers (0-9), and underscore (_)
     - Cannot be fully numeric
     - Cannot start or end with an underscore
@@ -232,8 +232,79 @@ def generate_username() -> str:
     Returns:
         str: A randomly generated username
     """
-    # Use the general function with default length range of 3-6
-    return generate_username_with_length(3, 6)
+    try:
+        # Import adaptive learning system
+        from roblox_api import adaptive_system
+        
+        # Get the length distribution from the adaptive learning system
+        length_distribution = adaptive_system.get_length_distribution()
+        
+        # Get character probabilities
+        char_probs = adaptive_system.get_character_probabilities()
+        
+        # If we have a distribution, use it to pick a length
+        if length_distribution:
+            # Convert to list of (length, probability) tuples
+            length_choices = list(length_distribution.items())
+            # Select a length based on the probability distribution
+            lengths, probabilities = zip(*length_choices)
+            chosen_length = random.choices(lengths, weights=probabilities, k=1)[0]
+            
+            # Log the adaptive choice
+            logger.debug(f"Adaptive learning chose length {chosen_length} from distribution {length_distribution}")
+            
+            # For very short usernames (3-4 chars), increase preference for underscore
+            # This is because they tend to have higher success rates
+            if chosen_length <= 4 and random.random() < char_probs.get('underscore', 0.2) * 1.5:
+                if chosen_length == 3:
+                    # For 3-char names with underscore, format is X_Y
+                    first_char = random.choice(string.ascii_letters + string.digits)
+                    last_char = random.choice(string.ascii_letters + string.digits)
+                    if last_char.isdigit() and first_char.isdigit():
+                        # Ensure not all numeric
+                        last_char = random.choice(string.ascii_letters)
+                    return f"{first_char}_{last_char}"
+                else:
+                    # For 4-char names, place underscore adaptively
+                    underscore_pos = 1 if random.random() < 0.5 else 2
+                    chars = []
+                    for i in range(4):
+                        if i == underscore_pos:
+                            chars.append('_')
+                        else:
+                            # Use adaptive probability for digits vs letters
+                            if random.random() < char_probs.get('numeric', 0.3):
+                                chars.append(random.choice(string.digits))
+                            else:
+                                # Use adaptive probability for uppercase vs lowercase
+                                if random.random() < char_probs.get('uppercase', 0.4):
+                                    chars.append(random.choice(string.ascii_uppercase))
+                                else:
+                                    chars.append(random.choice(string.ascii_lowercase))
+                    
+                    result = ''.join(chars)
+                    # Final validation check - ensure not all numeric except underscore
+                    if result.replace('_', '').isdigit():
+                        # Replace a random digit with a letter
+                        non_underscore_positions = [i for i, char in enumerate(result) if char != '_']
+                        if non_underscore_positions:
+                            position = random.choice(non_underscore_positions)
+                            chars = list(result)
+                            chars[position] = random.choice(string.ascii_letters)
+                            result = ''.join(chars)
+                    return result
+            
+            # Generate a username with the selected length
+            return generate_username_with_length(chosen_length, chosen_length)
+        
+        # Fallback to default 3-6 character range if no distribution
+        return generate_username_with_length(3, 6)
+    
+    except Exception as e:
+        # Log error but don't crash
+        logger.error(f"Error in adaptive username generation: {str(e)}, falling back to default")
+        # Fallback to default
+        return generate_username_with_length(3, 6)
 
 def validate_username(username: str) -> bool:
     """

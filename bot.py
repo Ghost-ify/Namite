@@ -63,7 +63,12 @@ class RobloxUsernameBot:
         self.task_running = False
         
         # Number of parallel username checks to perform
-        self.parallel_checks = 10  # Increased from 5 to 10 for better performance
+        # Import adaptive learning system
+        from roblox_api import adaptive_system
+        
+        # Get the parallel checks from adaptive learning system (or use default 10)
+        params = adaptive_system.get_current_params()
+        self.parallel_checks = params.get("parallel_checks", 10)
         
         # Semaphore to limit concurrent API requests
         self.semaphore = None
@@ -642,6 +647,19 @@ class RobloxUsernameBot:
         
         while True:
             try:
+                # Update parameters from adaptive learning system
+                try:
+                    from roblox_api import adaptive_system
+                    params = adaptive_system.get_current_params()
+                    adaptive_parallel = params.get("parallel_checks")
+                    if adaptive_parallel and adaptive_parallel != self.parallel_checks:
+                        logger.info(f"Updating parallel checks from {self.parallel_checks} to {adaptive_parallel} based on adaptive learning")
+                        self.parallel_checks = adaptive_parallel
+                        # Update semaphore to match new parallel count
+                        self.semaphore = asyncio.Semaphore(self.parallel_checks)
+                except Exception as e:
+                    logger.warning(f"Failed to update parameters from adaptive learning: {e}")
+                
                 # Create a batch of username checking tasks
                 tasks = []
                 for _ in range(self.parallel_checks):
