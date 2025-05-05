@@ -167,6 +167,12 @@ for index in sorted(all_cookies.keys()):
     else:
         logger.warning(f"Skipping invalid cookie at index {index} (length: {len(cookie) if cookie else 0})")
 
+# Double-check cookie count for debugging
+if len(ROBLOX_COOKIES) > 0:
+    logger.info(f"Successfully loaded {len(ROBLOX_COOKIES)} Roblox cookies for API requests")
+else:
+    logger.warning("No valid Roblox cookies found! Operating in unauthenticated mode, which may result in lower success rates.")
+
 # Flag to track if we're using authenticated requests
 USING_AUTH = len(ROBLOX_COOKIES) > 0
 
