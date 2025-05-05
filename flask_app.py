@@ -336,8 +336,8 @@ DASHBOARD_HTML = """
                                 {% for status in stats.cookie_status %}
                                     {% set total_checks.value = total_checks.value + status.success_count|default(0) + status.error_count|default(0) %}
                                 {% endfor %}
-                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(total_checks.value * 12) }}</span></div>
-                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format((total_checks.value * 12) / max(1, stats.cookie_count)) }}</span></div>
+                                <div>Average Checks/Min: <span class="badge bg-success">{{ "%.1f"|format(total_checks.value) }}</span></div>
+                                <div>Per Cookie: <span class="badge bg-info">{{ "%.1f"|format(total_checks.value / max(1, stats.cookie_count)) }}</span></div>
                             </div>
                         </div>
                     </div>
