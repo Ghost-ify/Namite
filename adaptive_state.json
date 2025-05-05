@@ -729,8 +729,8 @@
     "type:LUUNL": 1.0,
     "type:UN_NU": 1.0
   },
-  "underscore_probability": 0.2939322242805499,
-  "numeric_probability": 0.49596491195979264,
-  "uppercase_probability": 0.9448925220915181,
-  "last_updated": "2025-05-05T14:10:07.115408"
+  "underscore_probability": 0.29390195148409526,
+  "numeric_probability": 0.49624439920025265,
+  "uppercase_probability": 0.9449233824545692,
+  "last_updated": "2025-05-05T14:13:35.132137"
 }
