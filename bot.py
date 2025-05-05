@@ -296,8 +296,7 @@ class RobloxUsernameBot:
             await checking_message.edit(content=f"⚠️ Error checking username: `{username}`. Please try again later.")
     
     async def handle_length_command(self, channel, length_param):
-        """Handle the !roblox length command to check usernames of specific length."""
-        # Check if param is a single length or a range
+        """Handle the !roblox length command to update the bot's target length range."""
         try:
             if '-' in length_param:
                 # A range of lengths
@@ -316,53 +315,35 @@ class RobloxUsernameBot:
                 if length < 3 or length > 20:
                     await channel.send("⚠️ Invalid length. Usernames must be between 3 and 20 characters.")
                     return
-        except ValueError:
-            await channel.send("⚠️ Invalid format. Please specify a number (e.g., `5`) or a range (e.g., `5-8`).")
-            return
         
-        # Send initial message
-        message = await channel.send(f"🔍 Generating and checking usernames with length {min_length}{' to '+str(max_length) if min_length != max_length else ''}...")
+        # Update the bot's generator settings for future automatic checks
+        self.min_length = min_length
+        self.max_length = max_length
+        logger.info(f"Updated automatic generator settings to length: {min_length}-{max_length}")
         
-        # Generate and check 5 usernames with the specified length
-        results = []
-        errors = 0
-        
-        for _ in range(5):  # Check 5 usernames
-            username = generate_username_with_length(min_length, max_length)
+        # Update the adaptive learning system too
+        try:
+            from roblox_api import adaptive_system
             
-            try:
-                # Send a typing indicator to show progress
-                await channel.trigger_typing()
-                
-                # Check availability
-                try:
-                    is_available, status_code, response_message = await check_username_availability(username)
-                    
-                    # Add to results
-                    results.append({
-                        'username': username,
-                        'is_available': is_available,
-                        'message': response_message
-                    })
-                    
-                    if is_available:
-                        self.stats['available_found'] += 1
-                    
-                    # Update total checked
-                    self.stats['total_checked'] += 1
-                    
-                except Exception as api_error:
-                    logger.error(f"API error when checking username '{username}': {str(api_error)}")
-                    # Add to results with error information
-                    results.append({
-                        'username': username,
-                        'is_available': False,
-                        'message': f"API Error: {str(api_error)[:50]}..."
-                    })
-                
-            except Exception as e:
-                logger.error(f"Error checking username {username}: {str(e)}")
-                errors += 1
+            # Create new weights focusing heavily on the specified range
+            new_weights = {}
+            for length in range(3, 21):  # All possible Roblox username lengths
+                if min_length <= length <= max_length:
+                    new_weights[length] = 30.0  # High priority for target range
+                else:
+                    new_weights[length] = 1.0  # Very low weight for lengths outside range
+            
+            # Update the adaptive system
+            adaptive_system.length_weights = new_weights
+            adaptive_system.save_state()
+            adaptive_system.adapt()
+            
+            # Send confirmation message
+            await channel.send(f"✅ Bot will now focus on finding usernames with {min_length}{'-'+str(max_length) if min_length != max_length else ''} characters.")
+            
+        except Exception as e:
+            logger.error(f"Failed to update adaptive learning system: {str(e)}")
+            await channel.send("⚠️ There was an error updating the length settings.")
         
         # Update the bot's generator settings for future automatic checks
         self.min_length = min_length
