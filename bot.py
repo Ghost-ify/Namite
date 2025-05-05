@@ -772,7 +772,8 @@ class RobloxUsernameBot:
 
                             # Add statistics
                             success_rate = (self.stats['available_found'] / self.stats['total_checked']) * 100 if self.stats['total_checked'] > 0 else 0
-                            embed.add_fieldname="📊 Statistics",
+                            embed.add_field(
+                                name="📊 Statistics",
                                 value=f"Available: {self.stats['available_found']}/{self.stats['total_checked']} ({success_rate:.2f}%)",
                                 inline=False
                             )
