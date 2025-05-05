@@ -210,10 +210,67 @@ DASHBOARD_HTML = """
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <style>
         body {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
+            padding: 2rem;
             color: #e6e6e6;
+            background-color: #1c1c1c;
         }
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .stat-card {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-item {
+            background: #363636;
+            padding: 1.25rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #00ff9d;
+        }
+        .stat-label {
+            color: #a6a6a6;
+            font-size: 0.9rem;
+        }
+        .progress {
+            height: 0.75rem;
+            background-color: #363636;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .cookie-status {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            background: #363636;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 1rem;
+        }
+        .status-healthy { background-color: #00ff9d; }
+        .status-degraded { background-color: #ffd700; }
+        .status-poor { background-color: #ff4d4d; }
         .text-muted {
             color: #a6a6a6 !important;
         }
@@ -362,11 +419,10 @@ DASHBOARD_HTML = """
     </script>
 </head>
 <body data-bs-theme="dark">
-    <div class="container">
-        <div class="row">
-            <div class="col-12 mb-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h1>Roblox Username Bot Dashboard</h1>
+    <div class="app-container">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="m-0">Roblox Username Bot Analytics</h1>
                     <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
                             <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
@@ -595,14 +651,37 @@ DASHBOARD_HTML = """
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <!-- Recently Available Usernames -->
-                <div class="card stats-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4>Recently Available Usernames</h4>
-                        <span class="badge bg-success">{{ recent_usernames|length }} found</span>
+            <div class="stat-card">
+                <h4>Performance Metrics</h4>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.total_checked }}</div>
+                        <div class="stat-label">Total Checks</div>
                     </div>
-                    <div class="card-body">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.available_found }}</div>
+                        <div class="stat-label">Available Found</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "%.1f"|format(stats.success_rate) }}%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.checks_last_24h }}</div>
+                        <div class="stat-label">24h Checks</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <h4>System Health</h4>
+                    <div class="cookie-status">
+                        <div class="status-indicator {{ 'status-healthy' if stats.api_status == 'Healthy' else 'status-degraded' if stats.api_status == 'Degraded' else 'status-poor' }}"></div>
+                        <div>API Status: {{ stats.api_status }}</div>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" style="width: {{ stats.success_rate }}%"></div>
+                    </div>
+                </div>
                         {% if recent_usernames %}
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover">
